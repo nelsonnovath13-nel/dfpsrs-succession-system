@@ -128,7 +128,10 @@ function ExecutorsForm() {
       }
       setForm({ full_name: "", role_type: "executor", phone_number: "", national_id: "", family_member_id: "", linked_user_id: "" });
 
-      if (onboarding) {
+      // Continue to the next step automatically the first time this list goes from empty
+      // to non-empty -- regardless of how this page was reached -- but don't force a returning
+      // owner who already has executors through the chain again just for adding one more.
+      if (list.length === 0) {
         router.push("/owner/succession-plans/new?onboarding=1");
         return;
       }

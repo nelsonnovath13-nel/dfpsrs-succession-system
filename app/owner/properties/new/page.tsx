@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import { PageNav } from "@/components/PageNav";
 import { Stepper } from "@/components/Stepper";
@@ -17,11 +17,9 @@ const CATEGORIES = [
 const STEP_LABELS_SW = ["Taarifa za Mali", "Mahali Ilipo", "Thamani", "Pitia na Thibitisha"];
 const STEP_LABELS_EN = ["Property Info", "Location", "Value", "Review & Confirm"];
 
-function NewPropertyForm() {
+export default function NewPropertyPage() {
   const supabase = createClient();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const onboarding = searchParams.get("onboarding") === "1";
   const { lang } = useLanguage();
   const sw = lang === "sw";
 
@@ -108,7 +106,10 @@ function NewPropertyForm() {
         return;
       }
 
-      router.push(onboarding ? "/owner/family?onboarding=1" : "/owner/properties");
+      // Always continue to the next step of the succession-planning flow, regardless of
+      // whether this page was reached via the Welcome Wizard or the Property Registry's
+      // own "Register Property" button -- the flow should never depend on entry point.
+      router.push("/owner/family?onboarding=1");
     } catch (err: any) {
       setError(err?.message ?? (sw ? "Hitilafu isiyotarajiwa. Jaribu tena." : "An unexpected error occurred. Please try again."));
     } finally {
@@ -256,13 +257,5 @@ function NewPropertyForm() {
         </div>
       </div>
     </DashboardShell>
-  );
-}
-
-export default function NewPropertyPage() {
-  return (
-    <Suspense fallback={null}>
-      <NewPropertyForm />
-    </Suspense>
   );
 }

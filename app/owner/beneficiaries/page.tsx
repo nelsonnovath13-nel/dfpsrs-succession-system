@@ -106,7 +106,10 @@ function BeneficiariesForm() {
       }
       setForm({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
 
-      if (onboarding) {
+      // Continue to the next step automatically the first time this list goes from empty
+      // to non-empty -- regardless of how this page was reached -- but don't force a returning
+      // owner who already has beneficiaries through the chain again just for adding one more.
+      if (list.length === 0) {
         router.push("/owner/executors?onboarding=1");
         return;
       }
