@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import { PageNav } from "@/components/PageNav";
 import { Stepper } from "@/components/Stepper";
@@ -16,9 +16,11 @@ const CATEGORIES = [
 const STEP_LABELS_SW = ["Taarifa za Mali", "Mahali Ilipo", "Thamani", "Pitia na Thibitisha"];
 const STEP_LABELS_EN = ["Property Info", "Location", "Value", "Review & Confirm"];
 
-export default function NewPropertyPage() {
+function NewPropertyForm() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const onboarding = searchParams.get("onboarding") === "1";
   const { lang } = useLanguage();
   const sw = lang === "sw";
 
@@ -52,7 +54,9 @@ export default function NewPropertyPage() {
   } else if (!location.streetName) {
     fieldErrors.location = sw ? "Tafadhali chagua kijiji/mtaa" : "Please select a village/street";
   }
-  if (form.estimated_value && Number.isNaN(Number(form.estimated_value))) {
+  if (!form.estimated_value.trim()) {
+    fieldErrors.estimated_value = sw ? "Tafadhali ingiza thamani ya mali" : "Please enter the property value";
+  } else if (Number.isNaN(Number(form.estimated_value)) || Number(form.estimated_value) <= 0) {
     fieldErrors.estimated_value = sw ? "Tafadhali ingiza namba sahihi" : "Please enter a valid number";
   }
 
@@ -94,7 +98,7 @@ export default function NewPropertyPage() {
       setError(error.message);
       return;
     }
-    router.push("/owner/properties");
+    router.push(onboarding ? "/owner/family?onboarding=1" : "/owner/properties");
   }
 
   const STEP_LABELS = sw ? STEP_LABELS_SW : STEP_LABELS_EN;
@@ -175,7 +179,8 @@ export default function NewPropertyPage() {
               <label className="label">{sw ? "Thamani ya Mali (TZS)" : "Estimated Value (TZS)"}</label>
               <input
                 type="number"
-                min={0}
+                required
+                min={1}
                 className="input-field"
                 value={form.estimated_value}
                 onChange={(e) => setForm({ ...form, estimated_value: e.target.value })}
@@ -236,5 +241,13 @@ export default function NewPropertyPage() {
         </div>
       </div>
     </DashboardShell>
+  );
+}
+
+export default function NewPropertyPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewPropertyForm />
+    </Suspense>
   );
 }

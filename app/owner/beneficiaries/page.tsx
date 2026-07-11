@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { HeartHandshake } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
@@ -18,8 +19,11 @@ type Beneficiary = {
 
 type LinkableUser = { id: string; full_name: string; phone_number: string | null };
 
-export default function BeneficiariesPage() {
+function BeneficiariesForm() {
   const supabase = createClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const onboarding = searchParams.get("onboarding") === "1";
   const { lang } = useLanguage();
   const [list, setList] = useState<Beneficiary[]>([]);
   const [linkable, setLinkable] = useState<LinkableUser[]>([]);
@@ -55,6 +59,10 @@ export default function BeneficiariesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (onboarding) setShowForm(true);
+  }, [onboarding]);
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -76,6 +84,10 @@ export default function BeneficiariesPage() {
     }
     setForm({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
     setShowForm(false);
+    if (onboarding) {
+      router.push("/owner/executors?onboarding=1");
+      return;
+    }
     load();
   }
 
@@ -197,5 +209,13 @@ export default function BeneficiariesPage() {
         </div>
       )}
     </DashboardShell>
+  );
+}
+
+export default function BeneficiariesPage() {
+  return (
+    <Suspense fallback={null}>
+      <BeneficiariesForm />
+    </Suspense>
   );
 }

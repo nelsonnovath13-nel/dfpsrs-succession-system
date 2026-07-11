@@ -9,11 +9,11 @@ import { useLanguage } from "@/lib/i18n";
 type StepKey = "properties" | "family" | "beneficiaries" | "executors" | "record" | "submit";
 
 const STEP_META: { key: StepKey; icon: typeof Landmark; href: string }[] = [
-  { key: "properties", icon: Landmark, href: "/owner/properties/new" },
-  { key: "family", icon: Users, href: "/owner/family" },
-  { key: "beneficiaries", icon: HeartHandshake, href: "/owner/beneficiaries" },
-  { key: "executors", icon: ShieldCheck, href: "/owner/executors" },
-  { key: "record", icon: FileText, href: "/owner/succession-plans/new" },
+  { key: "properties", icon: Landmark, href: "/owner/properties/new?onboarding=1" },
+  { key: "family", icon: Users, href: "/owner/family?onboarding=1" },
+  { key: "beneficiaries", icon: HeartHandshake, href: "/owner/beneficiaries?onboarding=1" },
+  { key: "executors", icon: ShieldCheck, href: "/owner/executors?onboarding=1" },
+  { key: "record", icon: FileText, href: "/owner/succession-plans/new?onboarding=1" },
   { key: "submit", icon: Send, href: "/owner/succession-plans" },
 ];
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Users, User, ChevronDown, ChevronRight } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
@@ -84,8 +85,11 @@ function TreeNode({
   );
 }
 
-export default function FamilyStructurePage() {
+function FamilyStructureForm() {
   const supabase = createClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const onboarding = searchParams.get("onboarding") === "1";
   const { lang } = useLanguage();
   const [members, setMembers] = useState<Member[]>([]);
   const [ownerName, setOwnerName] = useState("");
@@ -119,6 +123,10 @@ export default function FamilyStructurePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (onboarding) setShowForm(true);
+  }, [onboarding]);
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -141,6 +149,10 @@ export default function FamilyStructurePage() {
     }
     setForm({ full_name: "", relationship_type: "child", phone_number: "", national_id: "", date_of_birth: "", parent_member_id: "" });
     setShowForm(false);
+    if (onboarding) {
+      router.push("/owner/beneficiaries?onboarding=1");
+      return;
+    }
     load();
   }
 
@@ -290,5 +302,13 @@ export default function FamilyStructurePage() {
         </div>
       )}
     </DashboardShell>
+  );
+}
+
+export default function FamilyStructurePage() {
+  return (
+    <Suspense fallback={null}>
+      <FamilyStructureForm />
+    </Suspense>
   );
 }

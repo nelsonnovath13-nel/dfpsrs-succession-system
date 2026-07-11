@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
@@ -29,8 +30,11 @@ const ROLE_TYPE_LABEL: Record<string, string> = {
   legal_representative: "Legal Representative",
 };
 
-export default function ExecutorsPage() {
+function ExecutorsForm() {
   const supabase = createClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const onboarding = searchParams.get("onboarding") === "1";
   const { lang } = useLanguage();
   const [list, setList] = useState<Executor[]>([]);
   const [linkable, setLinkable] = useState<LinkableUser[]>([]);
@@ -80,6 +84,10 @@ export default function ExecutorsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (onboarding) setShowForm(true);
+  }, [onboarding]);
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -102,6 +110,10 @@ export default function ExecutorsPage() {
     }
     setForm({ full_name: "", role_type: "executor", phone_number: "", national_id: "", family_member_id: "", linked_user_id: "" });
     setShowForm(false);
+    if (onboarding) {
+      router.push("/owner/succession-plans/new?onboarding=1");
+      return;
+    }
     load();
   }
 
@@ -241,5 +253,13 @@ export default function ExecutorsPage() {
         </div>
       )}
     </DashboardShell>
+  );
+}
+
+export default function ExecutorsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ExecutorsForm />
+    </Suspense>
   );
 }
