@@ -78,7 +78,7 @@ export default function NewPropertyPage() {
     try {
       const {
         data: { user },
-      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      } = await withTimeout(supabase.auth.getUser(), 15000, { data: { user: null } } as any);
       if (!user) {
         setError(sw ? "Kikao chako kimeisha. Tafadhali ingia tena." : "Your session has expired. Please sign in again.");
         return;
@@ -98,7 +98,7 @@ export default function NewPropertyPage() {
           location: composedLocation || null,
           description: form.description || null,
         }),
-        8000,
+        15000,
         { error: { message: sw ? "Muunganisho ulichelewa sana. Jaribu tena." : "The connection took too long. Please try again." } } as any
       );
       if (error) {

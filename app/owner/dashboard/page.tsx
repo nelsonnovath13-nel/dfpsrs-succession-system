@@ -36,30 +36,30 @@ export default function OwnerDashboardPage() {
     (async () => {
       const {
         data: { user },
-      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      } = await withTimeout(supabase.auth.getUser(), 15000, { data: { user: null } } as any);
       if (!user) return;
 
       const emptyList = { data: [] as any[] };
       const zeroCount = { count: 0 };
       const [propertiesRes, plansRes, beneficiariesRes, familyRes, witnessesRes, compRes] = await Promise.all([
-        withTimeout(supabase.from("dfp_properties").select("id, estimated_value").eq("owner_id", user.id), 8000, emptyList as any),
+        withTimeout(supabase.from("dfp_properties").select("id, estimated_value").eq("owner_id", user.id), 15000, emptyList as any),
         withTimeout(
           supabase
             .from("dfp_succession_records")
             .select("id, title, status, created_at")
             .eq("owner_id", user.id)
             .order("created_at", { ascending: false }),
-          8000,
+          15000,
           emptyList as any
         ),
         withTimeout(
           supabase.from("dfp_beneficiaries").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
-          8000,
+          15000,
           zeroCount as any
         ),
         withTimeout(
           supabase.from("dfp_family_members").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
-          8000,
+          15000,
           zeroCount as any
         ),
         withTimeout(
@@ -67,10 +67,10 @@ export default function OwnerDashboardPage() {
             .from("dfp_witnesses")
             .select("id, dfp_succession_records!inner(owner_id)", { count: "exact", head: true })
             .eq("dfp_succession_records.owner_id", user.id),
-          8000,
+          15000,
           zeroCount as any
         ),
-        withTimeout(supabase.rpc("dfp_estate_completeness", { p_owner_id: user.id }), 8000, { data: null } as any),
+        withTimeout(supabase.rpc("dfp_estate_completeness", { p_owner_id: user.id }), 15000, { data: null } as any),
       ]);
 
       const properties = propertiesRes.data;

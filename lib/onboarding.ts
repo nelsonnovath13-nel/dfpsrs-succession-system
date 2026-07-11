@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { withTimeout } from "./withTimeout";
 
 /**
  * Always re-derives the next incomplete onboarding step from real data, rather than trusting
@@ -12,13 +13,19 @@ export async function getNextOnboardingHref(
   fallback: string | null = null
 ): Promise<string | null> {
   try {
+    const zeroCount = { count: 0 };
+    const emptyList = { data: [] as any[] };
     const [{ count: properties }, { count: family }, { count: beneficiaries }, { count: executors }, { data: records }] =
       await Promise.all([
-        supabase.from("dfp_properties").select("id", { count: "exact", head: true }).eq("owner_id", ownerId),
-        supabase.from("dfp_family_members").select("id", { count: "exact", head: true }).eq("owner_id", ownerId),
-        supabase.from("dfp_beneficiaries").select("id", { count: "exact", head: true }).eq("owner_id", ownerId),
-        supabase.from("dfp_executors").select("id", { count: "exact", head: true }).eq("owner_id", ownerId).eq("status", "active"),
-        supabase.from("dfp_succession_records").select("status").eq("owner_id", ownerId),
+        withTimeout(supabase.from("dfp_properties").select("id", { count: "exact", head: true }).eq("owner_id", ownerId), 15000, zeroCount as any),
+        withTimeout(supabase.from("dfp_family_members").select("id", { count: "exact", head: true }).eq("owner_id", ownerId), 15000, zeroCount as any),
+        withTimeout(supabase.from("dfp_beneficiaries").select("id", { count: "exact", head: true }).eq("owner_id", ownerId), 15000, zeroCount as any),
+        withTimeout(
+          supabase.from("dfp_executors").select("id", { count: "exact", head: true }).eq("owner_id", ownerId).eq("status", "active"),
+          15000,
+          zeroCount as any
+        ),
+        withTimeout(supabase.from("dfp_succession_records").select("status").eq("owner_id", ownerId), 15000, emptyList as any),
       ]);
 
     if ((properties ?? 0) === 0) return "/owner/properties/new?onboarding=1";
@@ -26,7 +33,7 @@ export async function getNextOnboardingHref(
     if ((beneficiaries ?? 0) === 0) return "/owner/beneficiaries?onboarding=1";
     if ((executors ?? 0) === 0) return "/owner/executors?onboarding=1";
 
-    const hasSubmittedRecord = (records ?? []).some((r) => r.status !== "draft");
+    const hasSubmittedRecord = (records ?? []).some((r: any) => r.status !== "draft");
     if (!hasSubmittedRecord) return "/owner/succession-plans/new?onboarding=1";
 
     return null;

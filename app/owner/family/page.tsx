@@ -106,7 +106,7 @@ function FamilyStructureForm() {
     try {
       const {
         data: { user },
-      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      } = await withTimeout(supabase.auth.getUser(), 15000, { data: { user: null } } as any);
       if (!user) return;
 
       const emptyList = { data: [] as any[] };
@@ -117,10 +117,10 @@ function FamilyStructureForm() {
             .select("id, full_name, relationship_type, phone_number, national_id, date_of_birth, parent_member_id")
             .eq("owner_id", user.id)
             .order("created_at", { ascending: true }),
-          8000,
+          15000,
           emptyList as any
         ),
-        withTimeout(supabase.from("dfp_profiles").select("full_name").eq("id", user.id).maybeSingle(), 8000, { data: null } as any),
+        withTimeout(supabase.from("dfp_profiles").select("full_name").eq("id", user.id).maybeSingle(), 15000, { data: null } as any),
       ]);
       setMembers(membersRes.data ?? []);
       setOwnerName(profileRes.data?.full_name ?? "");
@@ -146,7 +146,7 @@ function FamilyStructureForm() {
     try {
       const {
         data: { user },
-      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      } = await withTimeout(supabase.auth.getUser(), 15000, { data: { user: null } } as any);
       if (!user) {
         setError(lang === "sw" ? "Kikao chako kimeisha. Tafadhali ingia tena." : "Your session has expired. Please sign in again.");
         return;
@@ -161,7 +161,7 @@ function FamilyStructureForm() {
           date_of_birth: form.date_of_birth || null,
           parent_member_id: form.parent_member_id || null,
         }),
-        8000,
+        15000,
         { error: { message: lang === "sw" ? "Muunganisho ulichelewa sana. Jaribu tena." : "The connection took too long. Please try again." } } as any
       );
       if (error) {

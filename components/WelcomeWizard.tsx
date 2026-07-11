@@ -44,7 +44,7 @@ export function WelcomeWizard() {
     (async () => {
       const {
         data: { user },
-      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      } = await withTimeout(supabase.auth.getUser(), 15000, { data: { user: null } } as any);
       if (!user) {
         setLoading(false);
         return;
@@ -55,25 +55,25 @@ export function WelcomeWizard() {
       const [propertiesRes, familyRes, beneficiariesRes, executorsRes, recordsRes] = await Promise.all([
         withTimeout(
           supabase.from("dfp_properties").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
-          8000,
+          15000,
           zeroCount as any
         ),
         withTimeout(
           supabase.from("dfp_family_members").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
-          8000,
+          15000,
           zeroCount as any
         ),
         withTimeout(
           supabase.from("dfp_beneficiaries").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
-          8000,
+          15000,
           zeroCount as any
         ),
         withTimeout(
           supabase.from("dfp_executors").select("id", { count: "exact", head: true }).eq("owner_id", user.id).eq("status", "active"),
-          8000,
+          15000,
           zeroCount as any
         ),
-        withTimeout(supabase.from("dfp_succession_records").select("status").eq("owner_id", user.id), 8000, emptyList as any),
+        withTimeout(supabase.from("dfp_succession_records").select("status").eq("owner_id", user.id), 15000, emptyList as any),
       ]);
 
       const records = recordsRes.data;

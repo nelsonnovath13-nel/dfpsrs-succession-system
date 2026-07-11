@@ -50,14 +50,36 @@ export default function NewSuccessionPlanPage() {
   const [loading, setLoading] = useState(false);
   const [doneRecord, setDoneRecord] = useState<{ id: string; title: string } | null>(null);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Distinguishes "genuinely timed out" from "the query came back with a real error" or
+  // "came back fine but empty" -- silently treating all three the same (as an earlier
+  // version did) is what made a slow/failed query look identical to "you truly have zero
+  // properties," which was actively misleading.
+  async function raceWithTimeout<T>(queryPromise: PromiseLike<{ data: T | null; error: any }>, ms: number) {
+    let timedOut = false;
+    const timeout = new Promise<"TIMEOUT">((resolve) => {
+      setTimeout(() => {
+        timedOut = true;
+        resolve("TIMEOUT");
+      }, ms);
+    });
+    const result = await Promise.race([Promise.resolve(queryPromise), timeout]);
+    if (result === "TIMEOUT" || timedOut) {
+      return { data: null as T | null, error: null, timedOut: true };
+    }
+    return { ...result, timedOut: false };
+  }
+
   async function loadFormData() {
     setDataLoading(true);
+    setLoadError(null);
     try {
       const {
         data: { user },
-      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      } = await withTimeout(supabase.auth.getUser(), 15000, { data: { user: null } } as any);
       if (!user) {
-        setError(
+        setLoadError(
           sw
             ? "Imeshindikana kupata kikao chako. Onyesha upya ukurasa (refresh) au ingia tena."
             : "Could not confirm your session. Refresh the page or sign in again."
@@ -65,25 +87,26 @@ export default function NewSuccessionPlanPage() {
         return;
       }
 
-      // Every query is independently timeout-guarded (8s) so a single hung request --
-      // not just a failed one -- can never leave this page stuck loading forever, and
-      // wrapped again individually so one hang never blocks the others from showing.
-      const emptyList = { data: [] as any[] };
       const [propsRes, bensRes, witnessesRes, leadersRes, legalRes] = await Promise.all([
-        withTimeout(
-          supabase.from("dfp_properties").select("id, name, category, estimated_value").eq("owner_id", user.id),
-          8000,
-          emptyList as any
-        ),
-        withTimeout(
+        raceWithTimeout(supabase.from("dfp_properties").select("id, name, category, estimated_value").eq("owner_id", user.id), 15000),
+        raceWithTimeout(
           supabase.from("dfp_beneficiaries").select("id, full_name, relationship, linked_user_id").eq("owner_id", user.id),
-          8000,
-          emptyList as any
+          15000
         ),
-        withTimeout(supabase.from("dfp_profiles").select("id, full_name").eq("role", "witness"), 8000, emptyList as any),
-        withTimeout(supabase.from("dfp_profiles").select("id, full_name").eq("role", "leader"), 8000, emptyList as any),
-        withTimeout(supabase.from("dfp_profiles").select("id, full_name").eq("role", "legal"), 8000, emptyList as any),
+        raceWithTimeout(supabase.from("dfp_profiles").select("id, full_name").eq("role", "witness"), 15000),
+        raceWithTimeout(supabase.from("dfp_profiles").select("id, full_name").eq("role", "leader"), 15000),
+        raceWithTimeout(supabase.from("dfp_profiles").select("id, full_name").eq("role", "legal"), 15000),
       ]);
+
+      const failures = [propsRes, bensRes].filter((r) => r.timedOut || r.error);
+      if (failures.length > 0) {
+        const detail = failures.map((f) => (f.timedOut ? "timeout" : f.error?.message)).join("; ");
+        setLoadError(
+          sw
+            ? `Imeshindikana kupakia mali/wanufaika wako (${detail}). Bonyeza "Jaribu Tena".`
+            : `Could not load your properties/beneficiaries (${detail}). Click "Try Again".`
+        );
+      }
 
       setProperties(propsRes.data ?? []);
       setBeneficiaries(bensRes.data ?? []);
@@ -305,6 +328,13 @@ export default function NewSuccessionPlanPage() {
 
           {dataLoading ? (
             <p className="text-sm text-neutralDark mb-6">{sw ? "Inapakia…" : "Loading…"}</p>
+          ) : loadError ? (
+            <div role="alert" className="card mb-6 bg-white border-red-800 text-red-800 text-sm space-y-3">
+              <p>{loadError}</p>
+              <button type="button" onClick={() => loadFormData()} className="btn-outline text-sm">
+                {sw ? "Jaribu Tena" : "Try Again"}
+              </button>
+            </div>
           ) : missingPrereqs ? (
             <div className="card mb-6 bg-white border-amber-700 text-amber-800 text-sm space-y-2">
               <p className="font-medium">
@@ -328,6 +358,9 @@ export default function NewSuccessionPlanPage() {
                   .
                 </p>
               )}
+              <button type="button" onClick={() => loadFormData()} className="text-xs text-primary underline mt-2">
+                {sw ? "Onyesha upya (Refresh)" : "Refresh"}
+              </button>
             </div>
           ) : (
             <div className="max-w-2xl">

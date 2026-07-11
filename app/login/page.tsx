@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { getNextOnboardingHref } from "@/lib/onboarding";
 
 function LoginForm() {
   const router = useRouter();
@@ -38,30 +39,12 @@ function LoginForm() {
         const role = result?.data?.role;
 
         if (role === "owner") {
-          const countsPromise = Promise.all([
-            supabase.from("dfp_properties").select("id", { count: "exact", head: true }).eq("owner_id", userId),
-            supabase.from("dfp_family_members").select("id", { count: "exact", head: true }).eq("owner_id", userId),
-            supabase.from("dfp_beneficiaries").select("id", { count: "exact", head: true }).eq("owner_id", userId),
-            supabase.from("dfp_executors").select("id", { count: "exact", head: true }).eq("owner_id", userId).eq("status", "active"),
-            supabase.from("dfp_succession_records").select("status").eq("owner_id", userId),
-          ]);
-          const counts = await Promise.race([countsPromise, timeout]);
-          if (counts) {
-            const [{ count: properties }, { count: family }, { count: beneficiaries }, { count: executors }, { data: records }] = counts;
-            const isComplete =
-              (properties ?? 0) > 0 &&
-              (family ?? 0) > 0 &&
-              (beneficiaries ?? 0) > 0 &&
-              (executors ?? 0) > 0 &&
-              (records ?? []).length > 0 &&
-              (records ?? []).some((r) => r.status !== "draft");
-            router.refresh();
-            router.push(isComplete ? "/owner/dashboard" : "/owner/onboarding");
-            return;
-          }
-          // Timed out -- fall through to a safe default rather than hang here.
+          // Resume exactly where they left off (the first genuinely incomplete step),
+          // not always back at the start of the wizard. Falls back to the dashboard on
+          // any failure/timeout rather than blocking sign-in.
+          const next = await getNextOnboardingHref(supabase, userId, "/owner/dashboard");
           router.refresh();
-          router.push("/owner/dashboard");
+          router.push(next ?? "/owner/dashboard");
           return;
         }
       }
