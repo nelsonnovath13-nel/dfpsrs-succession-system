@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { StatCard, StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 export default function EstateDashboardPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [counts, setCounts] = useState({ properties: 0, beneficiaries: 0, value: 0, verified: 0, pending: 0 });
   const [completeness, setCompleteness] = useState<{ score: number; missing: string[] } | null>(null);
   const [deathStatus, setDeathStatus] = useState<string | null>(null);
@@ -62,10 +65,31 @@ export default function EstateDashboardPage() {
     })();
   }, [supabase]);
 
-  const riskLevel =
-    completeness && completeness.score >= 80 ? "Low" : completeness && completeness.score >= 50 ? "Medium" : "High";
-  const riskColor =
-    riskLevel === "Low" ? "text-secondary" : riskLevel === "Medium" ? "text-amber-800" : "text-red-800";
+  // A brand-new estate with no properties yet hasn't been analyzed -- calling it "High Risk"
+  // is alarming and inaccurate. Only show a real risk level once there's meaningful data.
+  const isSettingUp = counts.properties === 0;
+  const riskLevel = isSettingUp
+    ? sw
+      ? "Inaanzishwa"
+      : "Setup In Progress"
+    : completeness && completeness.score >= 80
+    ? sw
+      ? "Chini"
+      : "Low"
+    : completeness && completeness.score >= 50
+    ? sw
+      ? "Wastani"
+      : "Medium"
+    : sw
+    ? "Juu"
+    : "High";
+  const riskColor = isSettingUp
+    ? "text-primary"
+    : completeness && completeness.score >= 80
+    ? "text-secondary"
+    : completeness && completeness.score >= 50
+    ? "text-amber-800"
+    : "text-red-800";
 
   return (
     <DashboardShell role="owner">

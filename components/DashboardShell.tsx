@@ -23,12 +23,14 @@ import {
   Menu,
   X,
   Compass,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage, LanguageToggle } from "@/lib/i18n";
 import { FooterLinks } from "@/components/FooterLinks";
 import { HelpButton } from "@/components/HelpButton";
+import { useInactivityLogout } from "@/lib/useInactivityLogout";
 
 type Role = "owner" | "witness" | "leader" | "admin" | "beneficiary" | "legal" | "auditor" | "executor";
 
@@ -185,6 +187,12 @@ export default function DashboardShell({
     router.refresh();
   }
 
+  useInactivityLogout(async () => {
+    await supabase.auth.signOut();
+    router.push("/login?timeout=1");
+    router.refresh();
+  });
+
   const items = buildNav(role, tr);
   const bottomNavItems =
     role === "owner"
@@ -234,7 +242,12 @@ export default function DashboardShell({
                 {unread}
               </span>
             )}
-            <button onClick={handleSignOut} className="text-sm text-primary underline">
+            <button
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-2 text-white font-medium text-sm"
+              style={{ minHeight: 44, backgroundColor: "#B91C1C", padding: "0 16px" }}
+            >
+              <LogOut size={16} aria-hidden="true" />
               {tr("sign_out")}
             </button>
           </div>

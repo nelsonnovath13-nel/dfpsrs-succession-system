@@ -10,6 +10,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const suspended = searchParams.get("suspended");
+  const timedOut = searchParams.get("timeout");
   const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -71,6 +72,12 @@ function LoginForm() {
           {suspended && (
             <div className="bg-amber-50 text-amber-800 text-sm border px-3 py-2 border border-amber-700">
               Your account has been suspended. Contact a system administrator.
+            </div>
+          )}
+          {timedOut && (
+            <div className="bg-amber-50 text-amber-800 text-sm border px-3 py-2 border border-amber-700">
+              You were signed out after 15 minutes of inactivity, to keep your family&apos;s
+              records secure. Please sign in again.
             </div>
           )}
           {error && (
