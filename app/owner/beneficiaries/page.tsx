@@ -1,0 +1,185 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import DashboardShell from "@/components/DashboardShell";
+import { createClient } from "@/lib/supabase/client";
+
+type Beneficiary = {
+  id: string;
+  full_name: string;
+  relationship: string;
+  phone_number: string | null;
+  national_id: string | null;
+  linked_user_id: string | null;
+};
+
+type LinkableUser = { id: string; full_name: string; phone_number: string | null };
+
+export default function BeneficiariesPage() {
+  const supabase = createClient();
+  const [list, setList] = useState<Beneficiary[]>([]);
+  const [linkable, setLinkable] = useState<LinkableUser[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("dfp_beneficiaries")
+      .select("id, full_name, relationship, phone_number, national_id, linked_user_id")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false });
+    setList(data ?? []);
+
+    const { data: users } = await supabase
+      .from("dfp_profiles")
+      .select("id, full_name, phone_number")
+      .eq("role", "beneficiary");
+    setLinkable(users ?? []);
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.from("dfp_beneficiaries").insert({
+      owner_id: user.id,
+      full_name: form.full_name,
+      relationship: form.relationship,
+      phone_number: form.phone_number || null,
+      national_id: form.national_id || null,
+      linked_user_id: form.linked_user_id || null,
+    });
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setForm({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
+    setShowForm(false);
+    load();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Remove this beneficiary?")) return;
+    await supabase.from("dfp_beneficiaries").delete().eq("id", id);
+    load();
+  }
+
+  return (
+    <DashboardShell role="owner">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold text-primary">Beneficiary Registry</h1>
+        <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
+          {showForm ? "Cancel" : "Add Beneficiary"}
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleAdd} className="card mb-6 space-y-4 max-w-xl">
+          {error && (
+            <div className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Full Name</label>
+              <input required className="input-field" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Relationship</label>
+              <input required className="input-field" placeholder="e.g. Daughter" value={form.relationship} onChange={(e) => setForm({ ...form, relationship: e.target.value })} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Phone Number</label>
+              <input className="input-field" value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">National ID</label>
+              <input className="input-field" value={form.national_id} onChange={(e) => setForm({ ...form, national_id: e.target.value })} />
+            </div>
+          </div>
+          <div>
+            <label className="label">Link to a registered account (optional)</label>
+            <select
+              className="input-field"
+              value={form.linked_user_id}
+              onChange={(e) => setForm({ ...form, linked_user_id: e.target.value })}
+            >
+              <option value="">Not linked — record only</option>
+              {linkable.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name} {u.phone_number ? `(${u.phone_number})` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-neutralDark mt-1">
+              Linking lets this person sign in as &quot;Beneficiary&quot; to confirm their role
+              once your succession record is verified. They must register first.
+            </p>
+          </div>
+          <button type="submit" className="btn-primary">Save Beneficiary</button>
+        </form>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-neutralDark">Loading…</p>
+      ) : list.length === 0 ? (
+        <div className="card text-center py-10 text-neutralDark">No beneficiaries added yet.</div>
+      ) : (
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-neutralDark border-b border-gray-300">
+                <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Relationship</th>
+                <th className="py-2 pr-4">Phone</th>
+                <th className="py-2 pr-4">National ID</th>
+                <th className="py-2 pr-4">Account</th>
+                <th className="py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((b) => (
+                <tr key={b.id} className="border-b border-gray-200 last:border-0">
+                  <td className="py-2 pr-4 font-medium text-neutralDark">{b.full_name}</td>
+                  <td className="py-2 pr-4 text-neutralDark">{b.relationship}</td>
+                  <td className="py-2 pr-4 text-neutralDark">{b.phone_number ?? "—"}</td>
+                  <td className="py-2 pr-4 text-neutralDark">{b.national_id ?? "—"}</td>
+                  <td className="py-2 pr-4">
+                    {b.linked_user_id ? (
+                      <span className="badge bg-white text-secondary border-secondary">Linked</span>
+                    ) : (
+                      <span className="badge bg-neutralLight text-neutralDark border-gray-400">Not linked</span>
+                    )}
+                  </td>
+                  <td className="py-2 text-right">
+                    <button onClick={() => handleDelete(b.id)} className="text-xs text-red-800 hover:underline">
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </DashboardShell>
+  );
+}
