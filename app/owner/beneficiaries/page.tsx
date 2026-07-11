@@ -7,6 +7,7 @@ import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { getNextOnboardingHref } from "@/lib/onboarding";
 
 type Beneficiary = {
   id: string;
@@ -84,8 +85,10 @@ function BeneficiariesForm() {
     }
     setForm({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
     setShowForm(false);
-    if (onboarding) {
-      router.push("/owner/executors?onboarding=1");
+
+    const next = await getNextOnboardingHref(supabase, user.id);
+    if (next) {
+      router.push(next);
       return;
     }
     load();

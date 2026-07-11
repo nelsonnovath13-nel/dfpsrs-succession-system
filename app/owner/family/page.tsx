@@ -7,6 +7,7 @@ import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { getNextOnboardingHref } from "@/lib/onboarding";
 
 type Member = {
   id: string;
@@ -149,8 +150,10 @@ function FamilyStructureForm() {
     }
     setForm({ full_name: "", relationship_type: "child", phone_number: "", national_id: "", date_of_birth: "", parent_member_id: "" });
     setShowForm(false);
-    if (onboarding) {
-      router.push("/owner/beneficiaries?onboarding=1");
+
+    const next = await getNextOnboardingHref(supabase, user.id);
+    if (next) {
+      router.push(next);
       return;
     }
     load();

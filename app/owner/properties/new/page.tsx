@@ -1,13 +1,14 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import { PageNav } from "@/components/PageNav";
 import { Stepper } from "@/components/Stepper";
 import { LocationPicker, EMPTY_LOCATION, type LocationValue } from "@/components/LocationPicker";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { getNextOnboardingHref } from "@/lib/onboarding";
 
 const CATEGORIES = [
   "land", "house", "farm", "vehicle", "business", "livestock", "bank_account", "investment", "other",
@@ -16,11 +17,9 @@ const CATEGORIES = [
 const STEP_LABELS_SW = ["Taarifa za Mali", "Mahali Ilipo", "Thamani", "Pitia na Thibitisha"];
 const STEP_LABELS_EN = ["Property Info", "Location", "Value", "Review & Confirm"];
 
-function NewPropertyForm() {
+export default function NewPropertyPage() {
   const supabase = createClient();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const onboarding = searchParams.get("onboarding") === "1";
   const { lang } = useLanguage();
   const sw = lang === "sw";
 
@@ -93,12 +92,15 @@ function NewPropertyForm() {
       location: composedLocation || null,
       description: form.description || null,
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setError(error.message);
       return;
     }
-    router.push(onboarding ? "/owner/family?onboarding=1" : "/owner/properties");
+
+    const next = await getNextOnboardingHref(supabase, user.id);
+    setLoading(false);
+    router.push(next ?? "/owner/properties");
   }
 
   const STEP_LABELS = sw ? STEP_LABELS_SW : STEP_LABELS_EN;
@@ -241,13 +243,5 @@ function NewPropertyForm() {
         </div>
       </div>
     </DashboardShell>
-  );
-}
-
-export default function NewPropertyPage() {
-  return (
-    <Suspense fallback={null}>
-      <NewPropertyForm />
-    </Suspense>
   );
 }

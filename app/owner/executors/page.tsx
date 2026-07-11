@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { getNextOnboardingHref } from "@/lib/onboarding";
 
 type Executor = {
   id: string;
@@ -110,8 +111,10 @@ function ExecutorsForm() {
     }
     setForm({ full_name: "", role_type: "executor", phone_number: "", national_id: "", family_member_id: "", linked_user_id: "" });
     setShowForm(false);
-    if (onboarding) {
-      router.push("/owner/succession-plans/new?onboarding=1");
+
+    const next = await getNextOnboardingHref(supabase, user.id);
+    if (next) {
+      router.push(next);
       return;
     }
     load();
