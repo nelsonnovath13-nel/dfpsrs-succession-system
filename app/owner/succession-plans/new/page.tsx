@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
+import { PageNav } from "@/components/PageNav";
 import { createClient } from "@/lib/supabase/client";
 
 type Property = { id: string; name: string; category: string };
@@ -161,6 +162,7 @@ export default function NewSuccessionPlanPage() {
 
   return (
     <DashboardShell role="owner">
+      <PageNav exitHref="/owner/succession-plans" />
       <h1 className="text-xl font-semibold text-primary mb-6">New Succession Record</h1>
 
       {(properties.length === 0 || beneficiaries.length === 0) && (

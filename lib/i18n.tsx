@@ -69,6 +69,11 @@ const DICT: Record<string, { en: string; sw: string }> = {
   main_navigation: { en: "Main navigation", sw: "Menyu kuu" },
   unread_notifications: { en: "unread notifications", sw: "arifa ambazo hazijasomwa" },
   onboarding: { en: "Get Started", sw: "Anza Hapa" },
+  back: { en: "Back", sw: "Rudi" },
+  exit: { en: "Exit", sw: "Toka" },
+  need_help: { en: "Need Help?", sw: "Unahitaji Msaada?" },
+  close: { en: "Close", sw: "Funga" },
+  read_full_help: { en: "Read Full Help Center", sw: "Soma Maelezo Kamili" },
   landing_tagline: {
     en: "An official platform for recording family property and succession plans, verified by family witnesses and local government authorities.",
     sw: "Jukwaa rasmi la kuhifadhi taarifa za mali za familia na mipango ya urithi, inayothibitishwa na mashahidi wa familia na mamlaka za Serikali za Mitaa.",

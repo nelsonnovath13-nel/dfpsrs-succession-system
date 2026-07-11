@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
+import { PageNav } from "@/components/PageNav";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
@@ -120,6 +121,7 @@ export default function DisputeDetailPage() {
 
   return (
     <DashboardShell role="owner">
+      <PageNav exitHref="/owner/disputes" />
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-xl font-semibold text-primary">{dispute.dfp_succession_records?.title}</h1>
         <StatusBadge status={dispute.status} />

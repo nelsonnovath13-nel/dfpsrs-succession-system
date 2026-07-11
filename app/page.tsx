@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLanguage, LanguageToggle } from "@/lib/i18n";
+import { FooterLinks } from "@/components/FooterLinks";
 
 export default function HomePage() {
   const { t: tr } = useLanguage();
@@ -39,12 +40,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      <footer className="border-t border-gray-300 py-4">
-        <div className="flex items-center justify-center gap-6 text-xs text-neutralDark">
-          <Link href="/help" className="hover:underline">{tr("help_center")}</Link>
-          <Link href="/terms" className="hover:underline">{tr("terms")}</Link>
-          <Link href="/privacy" className="hover:underline">{tr("privacy")}</Link>
-        </div>
+      <footer role="contentinfo" className="border-t border-gray-300 py-4 px-4">
+        <FooterLinks />
       </footer>
     </main>
   );

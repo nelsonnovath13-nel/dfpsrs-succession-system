@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users } from "lucide-react";
+import { Users, User, ChevronDown, ChevronRight } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
 import { createClient } from "@/lib/supabase/client";
@@ -27,18 +27,59 @@ const TYPE_LABEL: Record<string, string> = {
   extended: "Extended Family",
 };
 
-function TreeNode({ member, members, depth }: { member: Member; members: Member[]; depth: number }) {
+function TreeNode({
+  member,
+  members,
+  depth,
+  onSelect,
+  selectedId,
+}: {
+  member: Member;
+  members: Member[];
+  depth: number;
+  onSelect: (id: string) => void;
+  selectedId: string | null;
+}) {
   const children = members.filter((m) => m.parent_member_id === member.id);
+  const [expanded, setExpanded] = useState(true);
+  const tierStyle =
+    depth === 0
+      ? "bg-white border-2 border-primary text-ink"
+      : depth === 1
+      ? "bg-white border border-gray-400 text-ink"
+      : "bg-neutralLight border border-gray-300 text-inkSoft";
+
   return (
-    <div style={{ marginLeft: depth * 20 }} className="py-1">
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-neutralDark">{depth > 0 ? "└─" : ""}</span>
-        <span className="font-medium text-neutralDark">{member.full_name}</span>
-        <span className="text-xs text-neutralDark">({TYPE_LABEL[member.relationship_type]})</span>
+    <div className={depth > 0 ? "pl-5 border-l-2 border-gray-300 ml-3" : ""}>
+      <div className="flex items-center gap-2 py-1.5">
+        {children.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            aria-label={expanded ? "Funga" : "Fungua"}
+            aria-expanded={expanded}
+            className="text-neutralDark shrink-0"
+          >
+            {expanded ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => onSelect(member.id)}
+          className={`flex items-center gap-2 px-3 py-2 text-left ${tierStyle} ${
+            selectedId === member.id ? "ring-2 ring-primary" : ""
+          }`}
+          style={{ minHeight: 44 }}
+        >
+          <User size={16} aria-hidden="true" className="shrink-0" />
+          <span className="text-sm font-medium">{member.full_name}</span>
+          <span className="text-xs opacity-75">({TYPE_LABEL[member.relationship_type]})</span>
+        </button>
       </div>
-      {children.map((c) => (
-        <TreeNode key={c.id} member={c} members={members} depth={depth + 1} />
-      ))}
+      {expanded &&
+        children.map((c) => (
+          <TreeNode key={c.id} member={c} members={members} depth={depth + 1} onSelect={onSelect} selectedId={selectedId} />
+        ))}
     </div>
   );
 }
@@ -47,6 +88,8 @@ export default function FamilyStructurePage() {
   const supabase = createClient();
   const { lang } = useLanguage();
   const [members, setMembers] = useState<Member[]>([]);
+  const [ownerName, setOwnerName] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ full_name: "", relationship_type: "child", phone_number: "", national_id: "", date_of_birth: "", parent_member_id: "" });
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +107,10 @@ export default function FamilyStructurePage() {
       .eq("owner_id", user.id)
       .order("created_at", { ascending: true });
     setMembers(data ?? []);
+
+    const { data: profile } = await supabase.from("dfp_profiles").select("full_name").eq("id", user.id).maybeSingle();
+    setOwnerName(profile?.full_name ?? "");
+
     setLoading(false);
   }
 
@@ -164,42 +211,63 @@ export default function FamilyStructurePage() {
         <div className="space-y-6">
           {members.length > 0 && (
             <div className="card">
-              <h2 className="text-sm font-semibold text-primary uppercase tracking-wide mb-3">Family Tree</h2>
-              {members
-                .filter((m) => !m.parent_member_id)
-                .map((m) => (
-                  <TreeNode key={m.id} member={m} members={members} depth={0} />
-                ))}
+              <h2 className="text-sm font-semibold text-primary uppercase tracking-wide mb-4">
+                {lang === "sw" ? "Mti wa Familia" : "Family Tree"}
+              </h2>
+
+              <div
+                className="inline-flex items-center gap-2 px-4 py-2 mb-2 text-white"
+                style={{ backgroundColor: "#003E7E" }}
+              >
+                <User size={18} aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-semibold leading-tight">{ownerName || "…"}</p>
+                  <p className="text-[11px] opacity-80 leading-tight">
+                    {lang === "sw" ? "Mmiliki wa Mali" : "Property Owner"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pl-5 border-l-2 border-gray-300 ml-3">
+                {members
+                  .filter((m) => !m.parent_member_id)
+                  .map((m) => (
+                    <TreeNode key={m.id} member={m} members={members} depth={1} onSelect={setSelectedId} selectedId={selectedId} />
+                  ))}
+              </div>
+
+              {selectedId &&
+                (() => {
+                  const m = members.find((x) => x.id === selectedId);
+                  if (!m) return null;
+                  return (
+                    <div className="card mt-4 bg-neutralLight">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="font-semibold text-ink">{m.full_name}</p>
+                        <button onClick={() => setSelectedId(null)} className="text-xs text-neutralDark underline">
+                          {lang === "sw" ? "Funga" : "Close"}
+                        </button>
+                      </div>
+                      <dl className="text-sm text-inkSoft space-y-1">
+                        <div><dt className="inline font-medium">{lang === "sw" ? "Uhusiano: " : "Relationship: "}</dt><dd className="inline">{TYPE_LABEL[m.relationship_type]}</dd></div>
+                        <div><dt className="inline font-medium">{lang === "sw" ? "Simu: " : "Phone: "}</dt><dd className="inline">{m.phone_number ?? "—"}</dd></div>
+                        <div><dt className="inline font-medium">{lang === "sw" ? "NIDA: " : "National ID: "}</dt><dd className="inline">{m.national_id ?? "—"}</dd></div>
+                        <div><dt className="inline font-medium">{lang === "sw" ? "Tarehe ya Kuzaliwa: " : "Date of Birth: "}</dt><dd className="inline">{m.date_of_birth ?? "—"}</dd></div>
+                      </dl>
+                      <button
+                        onClick={() => {
+                          handleDelete(m.id);
+                          setSelectedId(null);
+                        }}
+                        className="text-xs text-danger underline mt-3"
+                      >
+                        {lang === "sw" ? "Ondoa" : "Remove"}
+                      </button>
+                    </div>
+                  );
+                })()}
             </div>
           )}
-          {TYPES.map((type) => {
-            const group = members.filter((m) => m.relationship_type === type);
-            if (group.length === 0) return null;
-            return (
-              <div key={type} className="card">
-                <h2 className="text-sm font-semibold text-primary uppercase tracking-wide mb-3">
-                  {TYPE_LABEL[type]}
-                </h2>
-                <table className="w-full text-sm">
-                  <tbody>
-                    {group.map((m) => (
-                      <tr key={m.id} className="border-b border-gray-200 last:border-0">
-                        <td className="py-2 pr-4 font-medium text-neutralDark">{m.full_name}</td>
-                        <td className="py-2 pr-4 text-neutralDark">{m.phone_number ?? "—"}</td>
-                        <td className="py-2 pr-4 text-neutralDark">{m.national_id ?? "—"}</td>
-                        <td className="py-2 pr-4 text-neutralDark">{m.date_of_birth ?? "—"}</td>
-                        <td className="py-2 text-right">
-                          <button onClick={() => handleDelete(m.id)} className="text-xs text-red-800 hover:underline">
-                            Remove
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })}
           {members.length === 0 && (
             <EmptyState
               icon={Users}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
+import { PageNav } from "@/components/PageNav";
 import { createClient } from "@/lib/supabase/client";
 
 const CATEGORIES = ["boundary", "ownership", "allocation", "fraud", "other"];
@@ -58,6 +59,7 @@ export default function NewDisputePage() {
 
   return (
     <DashboardShell role="owner">
+      <PageNav exitHref="/owner/disputes" />
       <h1 className="text-xl font-semibold text-primary mb-6">Open a Dispute</h1>
       <form onSubmit={handleSubmit} className="card max-w-xl space-y-4">
         {error && (

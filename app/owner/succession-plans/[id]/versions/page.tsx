@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
+import { PageNav } from "@/components/PageNav";
 import { createClient } from "@/lib/supabase/client";
 
 type Version = {
@@ -82,6 +83,7 @@ export default function VersionHistoryPage() {
 
   return (
     <DashboardShell role="owner">
+      <PageNav exitHref={`/owner/succession-plans/${params.id}`} />
       <h1 className="text-xl font-semibold text-primary mb-2">Version History — {record.title}</h1>
       <p className="text-sm text-neutralDark mb-6">
         {record.is_locked

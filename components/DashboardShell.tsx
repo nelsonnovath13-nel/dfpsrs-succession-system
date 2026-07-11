@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage, LanguageToggle } from "@/lib/i18n";
+import { FooterLinks } from "@/components/FooterLinks";
+import { HelpButton } from "@/components/HelpButton";
 
 type Role = "owner" | "witness" | "leader" | "admin" | "beneficiary" | "legal" | "auditor" | "executor";
 
@@ -250,16 +252,8 @@ export default function DashboardShell({
                 active={pathname === item.href || pathname.startsWith(item.href + "/")}
               />
             ))}
-            <div className="mt-6 border-t border-gray-200 pt-3">
-              <Link href="/help" className="block px-5 py-2 text-sm text-neutralDark hover:underline">
-                {tr("help_center")}
-              </Link>
-              <Link href="/terms" className="block px-5 py-2 text-sm text-neutralDark hover:underline">
-                {tr("terms")}
-              </Link>
-              <Link href="/privacy" className="block px-5 py-2 text-sm text-neutralDark hover:underline">
-                {tr("privacy")}
-              </Link>
+            <div className="mt-6 border-t border-gray-200 pt-3 px-5">
+              <FooterLinks compact />
             </div>
           </nav>
         </aside>
@@ -300,20 +294,20 @@ export default function DashboardShell({
                     />
                   </div>
                 ))}
-                <div className="mt-4 border-t border-gray-200 pt-3">
-                  <Link href="/help" className="block px-5 py-3 text-sm text-neutralDark">{tr("help_center")}</Link>
-                  <Link href="/terms" className="block px-5 py-3 text-sm text-neutralDark">{tr("terms")}</Link>
-                  <Link href="/privacy" className="block px-5 py-3 text-sm text-neutralDark">{tr("privacy")}</Link>
+                <div className="mt-4 border-t border-gray-200 pt-3 px-5">
+                  <FooterLinks compact />
                 </div>
               </nav>
             </div>
           </div>
         )}
 
-        <main id="main-content" tabIndex={-1} className="flex-1 p-4 sm:p-6 overflow-y-auto bg-neutralLight pb-20 lg:pb-6">
+        <main id="main-content" role="main" tabIndex={-1} className="flex-1 p-4 sm:p-6 overflow-y-auto bg-neutralLight pb-20 lg:pb-6">
           {children}
         </main>
       </div>
+
+      <HelpButton />
 
       {bottomNavItems.length > 0 && (
         <nav

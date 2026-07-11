@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
+import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Dispute = {
   id: string;
@@ -18,6 +21,7 @@ type Dispute = {
 
 export default function DisputesPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
   const [list, setList] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +50,18 @@ export default function DisputesPage() {
       {loading ? (
         <p className="text-sm text-neutralDark">Loading…</p>
       ) : list.length === 0 ? (
-        <div className="card text-center py-10 text-neutralDark">No disputes on record.</div>
+        <EmptyState
+          icon={AlertTriangle}
+          title={lang === "sw" ? "Hakuna mgogoro uliopo." : "No disputes on record."}
+          description={
+            lang === "sw"
+              ? "Mgogoro ni kutoelewana kuhusu kumbukumbu ya urithi — kwa mfano mpaka wa ardhi, umiliki, au mgao wa mali — kunakohitaji kutatuliwa."
+              : "A dispute is a disagreement about a succession record — for example a boundary, ownership, or allocation issue — that needs to be resolved."
+          }
+          action={{ label: lang === "sw" ? "Fungua Mgogoro" : "Open a Dispute", href: "/owner/disputes/new" }}
+          helpHref="/help"
+          helpLabel={lang === "sw" ? "Nahitaji msaada zaidi" : "I need more help"}
+        />
       ) : (
         <div className="space-y-3">
           {list.map((d) => (
