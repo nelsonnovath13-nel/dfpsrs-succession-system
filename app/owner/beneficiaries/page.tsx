@@ -34,11 +34,6 @@ function BeneficiariesForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [gate, setGate] = useState<"ask" | "count" | "filling" | "idle">("idle");
-  const [targetCountInput, setTargetCountInput] = useState("1");
-  const [targetCount, setTargetCount] = useState(1);
-  const [filledCount, setFilledCount] = useState(0);
-
   async function load() {
     setLoading(true);
     try {
@@ -77,25 +72,8 @@ function BeneficiariesForm() {
   }, []);
 
   useEffect(() => {
-    if (onboarding) setGate("ask");
+    if (onboarding) setShowForm(true);
   }, [onboarding]);
-
-  function answerAdd(yes: boolean) {
-    if (!yes) {
-      router.push("/owner/executors?onboarding=1");
-      return;
-    }
-    setGate("count");
-  }
-
-  function startFilling(e: React.FormEvent) {
-    e.preventDefault();
-    const n = Math.max(1, Math.min(20, Number(targetCountInput) || 1));
-    setTargetCount(n);
-    setFilledCount(0);
-    setGate("filling");
-    setShowForm(true);
-  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -105,32 +83,30 @@ function BeneficiariesForm() {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
       if (!user) {
         setError(lang === "sw" ? "Kikao chako kimeisha. Tafadhali ingia tena." : "Your session has expired. Please sign in again.");
         return;
       }
-      const { error } = await supabase.from("dfp_beneficiaries").insert({
-        owner_id: user.id,
-        full_name: form.full_name,
-        relationship: form.relationship,
-        phone_number: form.phone_number || null,
-        national_id: form.national_id || null,
-        linked_user_id: form.linked_user_id || null,
-      });
+      const { error } = await withTimeout(
+        supabase.from("dfp_beneficiaries").insert({
+          owner_id: user.id,
+          full_name: form.full_name,
+          relationship: form.relationship,
+          phone_number: form.phone_number || null,
+          national_id: form.national_id || null,
+          linked_user_id: form.linked_user_id || null,
+        }),
+        8000,
+        { error: { message: lang === "sw" ? "Muunganisho ulichelewa sana. Jaribu tena." : "The connection took too long. Please try again." } } as any
+      );
       if (error) {
         setError(error.message);
         return;
       }
       setForm({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
 
-      if (gate === "filling") {
-        const justFilled = filledCount + 1;
-        if (justFilled < targetCount) {
-          setFilledCount(justFilled);
-          load();
-          return;
-        }
+      if (onboarding) {
         router.push("/owner/executors?onboarding=1");
         return;
       }
@@ -154,40 +130,10 @@ function BeneficiariesForm() {
     <DashboardShell role="owner">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-primary">Beneficiary Registry</h1>
-        {gate === "idle" && (
-          <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? "Cancel" : "Add Beneficiary"}
-          </button>
-        )}
+        <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
+          {showForm ? "Cancel" : "Add Beneficiary"}
+        </button>
       </div>
-
-      {gate === "ask" && (
-        <div className="card mb-6 max-w-md">
-          <p className="font-medium text-ink mb-3">
-            {lang === "sw" ? "Je, unataka kuongeza mnufaika sasa?" : "Do you want to add a beneficiary now?"}
-          </p>
-          <div className="flex gap-3">
-            <button className="btn-primary" onClick={() => answerAdd(true)}>{lang === "sw" ? "Ndiyo" : "Yes"}</button>
-            <button className="btn-outline" onClick={() => answerAdd(false)}>{lang === "sw" ? "Hapana" : "No"}</button>
-          </div>
-        </div>
-      )}
-
-      {gate === "count" && (
-        <form onSubmit={startFilling} className="card mb-6 max-w-md space-y-4">
-          <div>
-            <label className="label">{lang === "sw" ? "Wanufaika wangapi unataka kuongeza?" : "How many beneficiaries do you want to add?"}</label>
-            <input type="number" required min={1} max={20} className="input-field" value={targetCountInput} onChange={(e) => setTargetCountInput(e.target.value)} />
-          </div>
-          <button type="submit" className="btn-primary">{lang === "sw" ? "Endelea" : "Continue"}</button>
-        </form>
-      )}
-
-      {gate === "filling" && targetCount > 1 && (
-        <p className="text-sm font-medium text-primary mb-3">
-          {lang === "sw" ? `Mnufaika wa ${filledCount + 1} kati ya ${targetCount}` : `Beneficiary ${filledCount + 1} of ${targetCount}`}
-        </p>
-      )}
 
       {showForm && (
         <form onSubmit={handleAdd} className="card mb-6 space-y-4 max-w-xl">

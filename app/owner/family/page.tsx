@@ -101,11 +101,6 @@ function FamilyStructureForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [gate, setGate] = useState<"ask" | "count" | "filling" | "idle">("idle");
-  const [targetCountInput, setTargetCountInput] = useState("1");
-  const [targetCount, setTargetCount] = useState(1);
-  const [filledCount, setFilledCount] = useState(0);
-
   async function load() {
     setLoading(true);
     try {
@@ -140,25 +135,8 @@ function FamilyStructureForm() {
   }, []);
 
   useEffect(() => {
-    if (onboarding) setGate("ask");
+    if (onboarding) setShowForm(true);
   }, [onboarding]);
-
-  function answerAdd(yes: boolean) {
-    if (!yes) {
-      router.push("/owner/beneficiaries?onboarding=1");
-      return;
-    }
-    setGate("count");
-  }
-
-  function startFilling(e: React.FormEvent) {
-    e.preventDefault();
-    const n = Math.max(1, Math.min(20, Number(targetCountInput) || 1));
-    setTargetCount(n);
-    setFilledCount(0);
-    setGate("filling");
-    setShowForm(true);
-  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -168,35 +146,31 @@ function FamilyStructureForm() {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
       if (!user) {
         setError(lang === "sw" ? "Kikao chako kimeisha. Tafadhali ingia tena." : "Your session has expired. Please sign in again.");
         return;
       }
-      const { error } = await supabase.from("dfp_family_members").insert({
-        owner_id: user.id,
-        full_name: form.full_name,
-        relationship_type: form.relationship_type,
-        phone_number: form.phone_number || null,
-        national_id: form.national_id || null,
-        date_of_birth: form.date_of_birth || null,
-        parent_member_id: form.parent_member_id || null,
-      });
+      const { error } = await withTimeout(
+        supabase.from("dfp_family_members").insert({
+          owner_id: user.id,
+          full_name: form.full_name,
+          relationship_type: form.relationship_type,
+          phone_number: form.phone_number || null,
+          national_id: form.national_id || null,
+          date_of_birth: form.date_of_birth || null,
+          parent_member_id: form.parent_member_id || null,
+        }),
+        8000,
+        { error: { message: lang === "sw" ? "Muunganisho ulichelewa sana. Jaribu tena." : "The connection took too long. Please try again." } } as any
+      );
       if (error) {
         setError(error.message);
         return;
       }
       setForm({ full_name: "", relationship_type: "child", phone_number: "", national_id: "", date_of_birth: "", parent_member_id: "" });
 
-      if (gate === "filling") {
-        const justFilled = filledCount + 1;
-        if (justFilled < targetCount) {
-          // More family members left in this batch -- keep the form open for the next one.
-          setFilledCount(justFilled);
-          load();
-          return;
-        }
-        // Batch complete -- navigate immediately, no extra query gates this.
+      if (onboarding) {
         router.push("/owner/beneficiaries?onboarding=1");
         return;
       }
@@ -220,40 +194,10 @@ function FamilyStructureForm() {
     <DashboardShell role="owner">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-primary">Family Structure Registry</h1>
-        {gate === "idle" && (
-          <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? "Cancel" : "+ Add Family Member"}
-          </button>
-        )}
+        <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
+          {showForm ? "Cancel" : "+ Add Family Member"}
+        </button>
       </div>
-
-      {gate === "ask" && (
-        <div className="card mb-6 max-w-md">
-          <p className="font-medium text-ink mb-3">
-            {lang === "sw" ? "Je, unataka kuongeza mwanafamilia sasa?" : "Do you want to add a family member now?"}
-          </p>
-          <div className="flex gap-3">
-            <button className="btn-primary" onClick={() => answerAdd(true)}>{lang === "sw" ? "Ndiyo" : "Yes"}</button>
-            <button className="btn-outline" onClick={() => answerAdd(false)}>{lang === "sw" ? "Hapana" : "No"}</button>
-          </div>
-        </div>
-      )}
-
-      {gate === "count" && (
-        <form onSubmit={startFilling} className="card mb-6 max-w-md space-y-4">
-          <div>
-            <label className="label">{lang === "sw" ? "Wanafamilia wangapi unataka kuongeza?" : "How many family members do you want to add?"}</label>
-            <input type="number" required min={1} max={20} className="input-field" value={targetCountInput} onChange={(e) => setTargetCountInput(e.target.value)} />
-          </div>
-          <button type="submit" className="btn-primary">{lang === "sw" ? "Endelea" : "Continue"}</button>
-        </form>
-      )}
-
-      {gate === "filling" && targetCount > 1 && (
-        <p className="text-sm font-medium text-primary mb-3">
-          {lang === "sw" ? `Mwanafamilia wa ${filledCount + 1} kati ya ${targetCount}` : `Family member ${filledCount + 1} of ${targetCount}`}
-        </p>
-      )}
 
       {showForm && (
         <form onSubmit={handleAdd} className="card mb-6 space-y-4 max-w-xl">
