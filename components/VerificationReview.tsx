@@ -188,7 +188,7 @@ export default function VerificationReview({ role }: { role: "witness" | "leader
           <div className="card space-y-4">
             <h2 className="font-semibold text-primary text-sm uppercase tracking-wide">Your Decision</h2>
             {error && (
-              <div className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
+              <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
             )}
 
             {role === "leader" && (

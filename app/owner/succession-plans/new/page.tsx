@@ -171,7 +171,7 @@ export default function NewSuccessionPlanPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
         {error && (
-          <div className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
+          <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
         )}
 
         <div className="card space-y-4">

@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { HeartHandshake } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
+import { EmptyState } from "@/components/EmptyState";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Beneficiary = {
   id: string;
@@ -17,6 +20,7 @@ type LinkableUser = { id: string; full_name: string; phone_number: string | null
 
 export default function BeneficiariesPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
   const [list, setList] = useState<Beneficiary[]>([]);
   const [linkable, setLinkable] = useState<LinkableUser[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -93,7 +97,7 @@ export default function BeneficiariesPage() {
       {showForm && (
         <form onSubmit={handleAdd} className="card mb-6 space-y-4 max-w-xl">
           {error && (
-            <div className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
+            <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -141,7 +145,19 @@ export default function BeneficiariesPage() {
       {loading ? (
         <p className="text-sm text-neutralDark">Loading…</p>
       ) : list.length === 0 ? (
-        <div className="card text-center py-10 text-neutralDark">No beneficiaries added yet.</div>
+        <EmptyState
+          icon={HeartHandshake}
+          title={lang === "sw" ? "Bado hujaongeza wanufaika." : "You haven't added any beneficiaries yet."}
+          description={
+            lang === "sw"
+              ? "Mnufaika ni mtu anayepaswa kupokea sehemu ya mali yako baada ya wewe kufariki — kwa mfano mtoto wako, mke/mume wako, au mtu mwingine unayemtaka."
+              : "A beneficiary is a person who should receive a share of your property after you pass away — for example your child, spouse, or someone else you choose."
+          }
+          examples={lang === "sw" ? ["Mtoto wako", "Mke/Mume", "Ndugu"] : ["Your child", "Your spouse", "A sibling"]}
+          action={{ label: lang === "sw" ? "Ongeza Mnufaika wa Kwanza" : "Add your first beneficiary", onClick: () => setShowForm(true) }}
+          helpHref="/help"
+          helpLabel={lang === "sw" ? "Nahitaji msaada zaidi" : "I need more help"}
+        />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">

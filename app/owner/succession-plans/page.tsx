@@ -2,14 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { FileText } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
+import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Plan = { id: string; title: string; status: string; created_at: string };
 
 export default function SuccessionPlansPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,12 +45,18 @@ export default function SuccessionPlansPage() {
       {loading ? (
         <p className="text-sm text-neutralDark">Loading…</p>
       ) : plans.length === 0 ? (
-        <div className="card text-center py-10">
-          <p className="text-neutralDark mb-3">No succession records yet.</p>
-          <Link href="/owner/succession-plans/new" className="btn-primary inline-block">
-            Create your first record
-          </Link>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={lang === "sw" ? "Bado hujatengeneza kumbukumbu ya urithi." : "You haven't created a succession record yet."}
+          description={
+            lang === "sw"
+              ? "Kumbukumbu ya urithi inaunganisha mali zako na wanufaika wako, na kuiweka kwenye mchakato wa uhakiki na mashahidi wa familia na Serikali za Mitaa."
+              : "A succession record links your properties to your beneficiaries and sends it through verification by family witnesses and local government."
+          }
+          action={{ label: lang === "sw" ? "Tengeneza Kumbukumbu ya Kwanza" : "Create your first record", href: "/owner/succession-plans/new" }}
+          helpHref="/help"
+          helpLabel={lang === "sw" ? "Nahitaji msaada zaidi" : "I need more help"}
+        />
       ) : (
         <div className="space-y-3">
           {plans.map((p) => (

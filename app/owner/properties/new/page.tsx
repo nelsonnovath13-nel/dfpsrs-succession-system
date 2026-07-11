@@ -54,7 +54,7 @@ export default function NewPropertyPage() {
       <h1 className="text-xl font-semibold text-primary mb-6">Register Property</h1>
       <form onSubmit={handleSubmit} className="card max-w-xl space-y-4">
         {error && (
-          <div className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
+          <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
         )}
         <div>
           <label className="label">Property Name</label>

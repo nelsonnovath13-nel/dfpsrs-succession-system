@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Users } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
+import { EmptyState } from "@/components/EmptyState";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Member = {
   id: string;
@@ -42,6 +45,7 @@ function TreeNode({ member, members, depth }: { member: Member; members: Member[
 
 export default function FamilyStructurePage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
   const [members, setMembers] = useState<Member[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ full_name: "", relationship_type: "child", phone_number: "", national_id: "", date_of_birth: "", parent_member_id: "" });
@@ -111,7 +115,7 @@ export default function FamilyStructurePage() {
       {showForm && (
         <form onSubmit={handleAdd} className="card mb-6 space-y-4 max-w-xl">
           {error && (
-            <div className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
+            <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -197,10 +201,23 @@ export default function FamilyStructurePage() {
             );
           })}
           {members.length === 0 && (
-            <div className="card text-center py-10 text-neutralDark">
-              No family members recorded yet. Family structure information provides context for
-              succession planning and is separate from the formal Beneficiary Registry.
-            </div>
+            <EmptyState
+              icon={Users}
+              title={lang === "sw" ? "Bado hujasajili familia yako." : "You haven't recorded your family yet."}
+              description={
+                lang === "sw"
+                  ? "Sajili baba, mama, mke/mume, watoto na wategemezi wako. Hii inasaidia kuonyesha muundo wa familia yako kwa uwazi — ni tofauti na Sajili ya Wanufaika."
+                  : "Record your father, mother, spouse, children, and dependents. This shows your family structure clearly and is separate from the formal Beneficiary Registry."
+              }
+              examples={
+                lang === "sw"
+                  ? ["Baba", "Mama", "Mke/Mume", "Mtoto", "Mtegemezi"]
+                  : ["Father", "Mother", "Spouse", "Child", "Dependent"]
+              }
+              action={{ label: lang === "sw" ? "Ongeza Mwanafamilia wa Kwanza" : "Add your first family member", onClick: () => setShowForm(true) }}
+              helpHref="/help"
+              helpLabel={lang === "sw" ? "Nahitaji msaada zaidi" : "I need more help"}
+            />
           )}
         </div>
       )}

@@ -3,8 +3,9 @@
 @tailwind utilities;
 
 body {
-  background-color: #F2F3F4;
-  color: #1A1A1A;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  font-size: 16px;
 }
 
 .card {
@@ -16,31 +17,96 @@ body {
 }
 
 .btn-primary {
-  @apply bg-primary text-white px-4 py-2 font-medium hover:bg-[#0c2f4d] transition disabled:opacity-50 disabled:cursor-not-allowed border border-primary;
+  @apply bg-primary text-white px-5 font-medium hover:bg-[#002d5c] transition disabled:opacity-50 disabled:cursor-not-allowed border border-primary inline-flex items-center justify-center;
+  min-height: 48px;
+  min-width: 120px;
+  font-size: 16px;
 }
 
 .btn-secondary {
-  @apply bg-secondary text-white px-4 py-2 font-medium hover:bg-[#163f24] transition disabled:opacity-50 border border-secondary;
+  @apply bg-secondary text-white px-5 font-medium hover:bg-[#166129] transition disabled:opacity-50 border border-secondary inline-flex items-center justify-center;
+  min-height: 48px;
+  min-width: 120px;
+  font-size: 16px;
 }
 
 .btn-outline {
-  @apply border border-gray-400 text-neutralDark px-4 py-2 font-medium hover:bg-neutralLight transition;
+  @apply border border-gray-400 text-neutralDark px-5 font-medium hover:bg-neutralLight transition inline-flex items-center justify-center;
+  min-height: 48px;
+  min-width: 120px;
+  font-size: 16px;
 }
 
 .btn-danger {
-  @apply bg-white text-red-800 border border-red-800 px-4 py-2 font-medium hover:bg-red-50 transition;
+  @apply bg-white text-danger border border-danger px-5 font-medium hover:bg-red-50 transition inline-flex items-center justify-center;
+  min-height: 48px;
+  min-width: 120px;
+  font-size: 16px;
+}
+
+@media (max-width: 640px) {
+  .btn-primary, .btn-secondary, .btn-outline, .btn-danger {
+    @apply w-full;
+  }
 }
 
 .input-field {
-  @apply w-full border border-gray-400 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white;
+  @apply w-full border border-gray-400 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white;
+  min-height: 48px;
+  font-size: 16px;
 }
 
 .label {
-  @apply block text-sm font-medium text-neutralDark mb-1;
+  @apply block font-medium text-neutralDark mb-1;
+  font-size: 14px;
 }
 
 .badge {
-  @apply inline-flex items-center px-2 py-0.5 text-xs font-semibold border;
+  @apply inline-flex items-center px-2 py-0.5 font-semibold border;
+  font-size: 14px;
+}
+
+/* Visible keyboard focus everywhere, per WCAG 2.1 AA */
+:focus-visible {
+  outline: 3px solid #003E7E;
+  outline-offset: 2px;
+}
+
+.skip-link {
+  @apply bg-primary text-white px-4 py-2 font-medium;
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 100;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+.empty-state {
+  @apply bg-white border border-gray-300 text-center;
+  padding: 48px 24px;
+}
+.empty-state-icon {
+  @apply text-primary;
+  margin: 0 auto 16px;
+}
+.empty-state-title {
+  @apply font-semibold text-ink;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+.empty-state-desc {
+  @apply text-inkSoft;
+  font-size: 16px;
+  max-width: 48ch;
+  margin: 0 auto 16px;
+}
+.empty-state-examples {
+  @apply text-inkSoft;
+  font-size: 14px;
+  margin-bottom: 20px;
 }
 
 @media print {

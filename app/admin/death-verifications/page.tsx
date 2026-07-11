@@ -84,7 +84,7 @@ export default function AdminDeathVerificationsPage() {
       {showForm && (
         <form onSubmit={handleReport} className="card mb-6 space-y-4 max-w-md">
           {error && (
-            <div className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
+            <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
           )}
           <div>
             <label className="label">Property Owner</label>

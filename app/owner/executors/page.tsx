@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
+import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Executor = {
   id: string;
@@ -28,6 +31,7 @@ const ROLE_TYPE_LABEL: Record<string, string> = {
 
 export default function ExecutorsPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
   const [list, setList] = useState<Executor[]>([]);
   const [linkable, setLinkable] = useState<LinkableUser[]>([]);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
@@ -124,7 +128,7 @@ export default function ExecutorsPage() {
       {showForm && (
         <form onSubmit={handleAdd} className="card mb-6 space-y-4 max-w-xl">
           {error && (
-            <div className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
+            <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -179,7 +183,23 @@ export default function ExecutorsPage() {
       {loading ? (
         <p className="text-sm text-neutralDark">Loading…</p>
       ) : list.length === 0 ? (
-        <div className="card text-center py-10 text-neutralDark">No executors or representatives appointed yet.</div>
+        <EmptyState
+          icon={ShieldCheck}
+          title={lang === "sw" ? "Bado hujateua msimamizi wa urithi." : "You haven't appointed an estate executor yet."}
+          description={
+            lang === "sw"
+              ? "Msimamizi wa urithi ni mtu unayemwamini kufuatilia mchakato wa urithi wako baada ya wewe kufariki — anaweza kuwa mwanafamilia, wakili, au mtu mwingine unayemwamini."
+              : "An executor is someone you trust to follow through on your succession plan after you pass away — a family member, a lawyer, or anyone else you trust."
+          }
+          examples={
+            lang === "sw"
+              ? ["Msimamizi wa Mirathi", "Mwakilishi wa Familia", "Mtu wa Kuaminika", "Mwakilishi wa Kisheria"]
+              : ["Estate Executor", "Family Representative", "Trusted Contact", "Legal Representative"]
+          }
+          action={{ label: lang === "sw" ? "Teua wa Kwanza" : "Appoint your first executor", onClick: () => setShowForm(true) }}
+          helpHref="/help"
+          helpLabel={lang === "sw" ? "Nahitaji msaada zaidi" : "I need more help"}
+        />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">

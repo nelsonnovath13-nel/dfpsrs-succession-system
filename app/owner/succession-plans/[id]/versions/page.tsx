@@ -90,7 +90,7 @@ export default function VersionHistoryPage() {
       </p>
 
       {error && (
-        <div className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2 mb-4">{error}</div>
+        <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2 mb-4">{error}</div>
       )}
 
       {versions.length === 0 ? (

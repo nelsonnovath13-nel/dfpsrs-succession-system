@@ -63,6 +63,12 @@ const DICT: Record<string, { en: string; sw: string }> = {
   disputes: { en: "Dispute Management", sw: "Usimamizi wa Migogoro" },
   death_verifications: { en: "Death Verification", sw: "Uthibitishaji wa Kifo" },
   legal_flags: { en: "Compliance Flags", sw: "Alama za Uzingatiaji" },
+  skip_to_content: { en: "Skip to main content", sw: "Ruka moja kwa moja hadi maudhui" },
+  open_menu: { en: "Open menu", sw: "Fungua menyu" },
+  close_menu: { en: "Close menu", sw: "Funga menyu" },
+  main_navigation: { en: "Main navigation", sw: "Menyu kuu" },
+  unread_notifications: { en: "unread notifications", sw: "arifa ambazo hazijasomwa" },
+  onboarding: { en: "Get Started", sw: "Anza Hapa" },
   landing_tagline: {
     en: "An official platform for recording family property and succession plans, verified by family witnesses and local government authorities.",
     sw: "Jukwaa rasmi la kuhifadhi taarifa za mali za familia na mipango ya urithi, inayothibitishwa na mashahidi wa familia na mamlaka za Serikali za Mitaa.",
@@ -92,6 +98,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const stored = window.localStorage.getItem("dfp_lang") as Lang | null;
     if (stored === "en" || stored === "sw") setLangState(stored);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   function setLang(l: Lang) {
     setLangState(l);

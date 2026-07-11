@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Landmark } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
+import { EmptyState } from "@/components/EmptyState";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Property = {
   id: string;
@@ -42,6 +45,7 @@ const DOC_CATEGORIES = [
 
 export default function PropertiesPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
   const [properties, setProperties] = useState<Property[]>([]);
   const [docs, setDocs] = useState<Record<string, Doc[]>>({});
   const [loading, setLoading] = useState(true);
@@ -135,12 +139,23 @@ export default function PropertiesPage() {
       {loading ? (
         <p className="text-sm text-neutralDark">Loading…</p>
       ) : properties.length === 0 ? (
-        <div className="card text-center py-10">
-          <p className="text-neutralDark mb-3">You haven&apos;t registered any properties yet.</p>
-          <Link href="/owner/properties/new" className="btn-primary inline-block">
-            Register your first property
-          </Link>
-        </div>
+        <EmptyState
+          icon={Landmark}
+          title={lang === "sw" ? "Bado hujasajili mali. Hapa ndio pa kuanzia." : "You haven't registered any property yet. This is where you start."}
+          description={
+            lang === "sw"
+              ? "Mali ni kila kitu chenye thamani unachotaka kiwarithishe watoto au familia yako — nyumba, shamba, gari, biashara, au akiba benki."
+              : "A property is anything of value you want to pass on to your family — a house, farmland, a vehicle, a business, or a bank account."
+          }
+          examples={
+            lang === "sw"
+              ? ["Nyumba ya familia", "Shamba Mbeya", "Duka la biashara", "Akaunti ya benki"]
+              : ["Family home", "Farmland in Mbeya", "A shop or business", "Bank account"]
+          }
+          action={{ label: lang === "sw" ? "Sajili Mali ya Kwanza" : "Register your first property", href: "/owner/properties/new" }}
+          helpHref="/help"
+          helpLabel={lang === "sw" ? "Nahitaji msaada zaidi" : "I need more help"}
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {properties.map((p) => (
