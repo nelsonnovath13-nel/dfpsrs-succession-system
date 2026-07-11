@@ -32,6 +32,7 @@ function BeneficiariesForm() {
   const [form, setForm] = useState({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -66,32 +67,43 @@ function BeneficiariesForm() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return; // guards against a double-click firing this twice
+    setSaving(true);
     setError(null);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { error } = await supabase.from("dfp_beneficiaries").insert({
-      owner_id: user.id,
-      full_name: form.full_name,
-      relationship: form.relationship,
-      phone_number: form.phone_number || null,
-      national_id: form.national_id || null,
-      linked_user_id: form.linked_user_id || null,
-    });
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    setForm({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
-    setShowForm(false);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setError(lang === "sw" ? "Kikao chako kimeisha. Tafadhali ingia tena." : "Your session has expired. Please sign in again.");
+        return;
+      }
+      const { error } = await supabase.from("dfp_beneficiaries").insert({
+        owner_id: user.id,
+        full_name: form.full_name,
+        relationship: form.relationship,
+        phone_number: form.phone_number || null,
+        national_id: form.national_id || null,
+        linked_user_id: form.linked_user_id || null,
+      });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      setForm({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
+      setShowForm(false);
 
-    const next = await getNextOnboardingHref(supabase, user.id);
-    if (next) {
-      router.push(next);
-      return;
+      const next = await getNextOnboardingHref(supabase, user.id, "/owner/executors?onboarding=1");
+      if (next) {
+        router.push(next);
+        return;
+      }
+      load();
+    } catch (err: any) {
+      setError(err?.message ?? (lang === "sw" ? "Hitilafu isiyotarajiwa. Jaribu tena." : "An unexpected error occurred. Please try again."));
+    } finally {
+      setSaving(false);
     }
-    load();
   }
 
   async function handleDelete(id: string) {
@@ -153,7 +165,7 @@ function BeneficiariesForm() {
               once your succession record is verified. They must register first.
             </p>
           </div>
-          <button type="submit" className="btn-primary">Save Beneficiary</button>
+          <button type="submit" disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save Beneficiary"}</button>
         </form>
       )}
 

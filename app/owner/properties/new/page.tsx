@@ -72,35 +72,43 @@ export default function NewPropertyPage() {
   }
 
   async function handleSubmit() {
+    if (loading) return; // guards against a double-click firing this twice
     setLoading(true);
     setError(null);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setError(sw ? "Kikao chako kimeisha. Tafadhali ingia tena." : "Your session has expired. Please sign in again.");
+        return;
+      }
 
-    const composedLocation = [location.streetName, location.wardName, location.districtName, location.regionName]
-      .filter(Boolean)
-      .join(", ");
+      const composedLocation = [location.streetName, location.wardName, location.districtName, location.regionName]
+        .filter(Boolean)
+        .join(", ");
 
-    const { error } = await supabase.from("dfp_properties").insert({
-      owner_id: user.id,
-      name: form.name,
-      category: form.category,
-      ownership_type: form.ownership_type,
-      estimated_value: form.estimated_value ? Number(form.estimated_value) : null,
-      location: composedLocation || null,
-      description: form.description || null,
-    });
-    if (error) {
+      const { error } = await supabase.from("dfp_properties").insert({
+        owner_id: user.id,
+        name: form.name,
+        category: form.category,
+        ownership_type: form.ownership_type,
+        estimated_value: form.estimated_value ? Number(form.estimated_value) : null,
+        location: composedLocation || null,
+        description: form.description || null,
+      });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      const next = await getNextOnboardingHref(supabase, user.id, "/owner/family?onboarding=1");
+      router.push(next ?? "/owner/properties");
+    } catch (err: any) {
+      setError(err?.message ?? (sw ? "Hitilafu isiyotarajiwa. Jaribu tena." : "An unexpected error occurred. Please try again."));
+    } finally {
       setLoading(false);
-      setError(error.message);
-      return;
     }
-
-    const next = await getNextOnboardingHref(supabase, user.id);
-    setLoading(false);
-    router.push(next ?? "/owner/properties");
   }
 
   const STEP_LABELS = sw ? STEP_LABELS_SW : STEP_LABELS_EN;

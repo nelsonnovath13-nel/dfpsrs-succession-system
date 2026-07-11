@@ -99,6 +99,7 @@ function FamilyStructureForm() {
   const [form, setForm] = useState({ full_name: "", relationship_type: "child", phone_number: "", national_id: "", date_of_birth: "", parent_member_id: "" });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -130,33 +131,44 @@ function FamilyStructureForm() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return; // guards against a double-click firing this twice
+    setSaving(true);
     setError(null);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { error } = await supabase.from("dfp_family_members").insert({
-      owner_id: user.id,
-      full_name: form.full_name,
-      relationship_type: form.relationship_type,
-      phone_number: form.phone_number || null,
-      national_id: form.national_id || null,
-      date_of_birth: form.date_of_birth || null,
-      parent_member_id: form.parent_member_id || null,
-    });
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    setForm({ full_name: "", relationship_type: "child", phone_number: "", national_id: "", date_of_birth: "", parent_member_id: "" });
-    setShowForm(false);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setError(lang === "sw" ? "Kikao chako kimeisha. Tafadhali ingia tena." : "Your session has expired. Please sign in again.");
+        return;
+      }
+      const { error } = await supabase.from("dfp_family_members").insert({
+        owner_id: user.id,
+        full_name: form.full_name,
+        relationship_type: form.relationship_type,
+        phone_number: form.phone_number || null,
+        national_id: form.national_id || null,
+        date_of_birth: form.date_of_birth || null,
+        parent_member_id: form.parent_member_id || null,
+      });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      setForm({ full_name: "", relationship_type: "child", phone_number: "", national_id: "", date_of_birth: "", parent_member_id: "" });
+      setShowForm(false);
 
-    const next = await getNextOnboardingHref(supabase, user.id);
-    if (next) {
-      router.push(next);
-      return;
+      const next = await getNextOnboardingHref(supabase, user.id, "/owner/beneficiaries?onboarding=1");
+      if (next) {
+        router.push(next);
+        return;
+      }
+      load();
+    } catch (err: any) {
+      setError(err?.message ?? (lang === "sw" ? "Hitilafu isiyotarajiwa. Jaribu tena." : "An unexpected error occurred. Please try again."));
+    } finally {
+      setSaving(false);
     }
-    load();
   }
 
   async function handleDelete(id: string) {
@@ -216,7 +228,7 @@ function FamilyStructureForm() {
               ))}
             </select>
           </div>
-          <button type="submit" className="btn-primary">Save</button>
+          <button type="submit" disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save"}</button>
         </form>
       )}
 

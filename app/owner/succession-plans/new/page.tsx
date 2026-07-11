@@ -81,6 +81,7 @@ export default function NewSuccessionPlanPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return; // guards against a double-click firing this twice
     setError(null);
 
     if (allocations.length === 0) {
@@ -101,63 +102,69 @@ export default function NewSuccessionPlanPage() {
     }
 
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setError("Your session has expired. Please sign in again.");
+        return;
+      }
 
-    const { data: record, error: recErr } = await supabase
-      .from("dfp_succession_records")
-      .insert({ owner_id: user.id, title, instructions: instructions || null })
-      .select("id")
-      .single();
+      const { data: record, error: recErr } = await supabase
+        .from("dfp_succession_records")
+        .insert({ owner_id: user.id, title, instructions: instructions || null })
+        .select("id")
+        .single();
 
-    if (recErr || !record) {
-      setError(recErr?.message ?? "Could not create succession record.");
-      setLoading(false);
-      return;
-    }
+      if (recErr || !record) {
+        setError(recErr?.message ?? "Could not create succession record.");
+        return;
+      }
 
-    const allocationRows = allocations
-      .filter((a) => a.property_id && a.beneficiary_id && a.share_percentage)
-      .map((a) => ({
+      const allocationRows = allocations
+        .filter((a) => a.property_id && a.beneficiary_id && a.share_percentage)
+        .map((a) => ({
+          succession_record_id: record.id,
+          property_id: a.property_id,
+          beneficiary_id: a.beneficiary_id,
+          share_percentage: Number(a.share_percentage),
+        }));
+
+      const { error: allocErr } = await supabase.from("dfp_property_allocations").insert(allocationRows);
+      if (allocErr) {
+        setError(allocErr.message);
+        return;
+      }
+
+      await supabase.from("dfp_witnesses").insert(
+        selectedWitnesses.map((w) => ({ succession_record_id: record.id, witness_user_id: w }))
+      );
+      await supabase.from("dfp_leaders").insert({
         succession_record_id: record.id,
-        property_id: a.property_id,
-        beneficiary_id: a.beneficiary_id,
-        share_percentage: Number(a.share_percentage),
-      }));
-
-    const { error: allocErr } = await supabase.from("dfp_property_allocations").insert(allocationRows);
-    if (allocErr) {
-      setError(allocErr.message);
-      setLoading(false);
-      return;
-    }
-
-    await supabase.from("dfp_witnesses").insert(
-      selectedWitnesses.map((w) => ({ succession_record_id: record.id, witness_user_id: w }))
-    );
-    await supabase.from("dfp_leaders").insert({
-      succession_record_id: record.id,
-      leader_user_id: selectedLeader,
-    });
-    if (selectedLegal) {
-      await supabase.from("dfp_legal_officers").insert({
-        succession_record_id: record.id,
-        legal_officer_id: selectedLegal,
+        leader_user_id: selectedLeader,
       });
-    }
+      if (selectedLegal) {
+        await supabase.from("dfp_legal_officers").insert({
+          succession_record_id: record.id,
+          legal_officer_id: selectedLegal,
+        });
+      }
 
-    const { error: submitErr } = await supabase.rpc("dfp_submit_succession_record", {
-      p_record_id: record.id,
-    });
-    setLoading(false);
-    if (submitErr) {
-      setError(submitErr.message);
-      return;
-    }
+      const { error: submitErr } = await supabase.rpc("dfp_submit_succession_record", {
+        p_record_id: record.id,
+      });
+      if (submitErr) {
+        setError(submitErr.message);
+        return;
+      }
 
-    router.push(`/owner/succession-plans/${record.id}`);
+      router.push(`/owner/succession-plans/${record.id}`);
+    } catch (err: any) {
+      setError(err?.message ?? "An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
