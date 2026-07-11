@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { LifeBuoy, X } from "lucide-react";
+import { LifeBuoy, BookOpen, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 const PAGE_HELP: Record<string, { en: string; sw: string }> = {
@@ -88,7 +88,12 @@ export function HelpButton() {
               <p className="text-sm text-inkSoft leading-relaxed mb-4">
                 {lang === "sw" ? content.sw : content.en}
               </p>
-              <Link href="/help" className="text-sm text-primary underline font-medium">
+              <Link
+                href="/help"
+                className="inline-flex items-center gap-2 border border-primary text-primary font-medium text-sm px-4"
+                style={{ minHeight: 44 }}
+              >
+                <BookOpen size={16} aria-hidden="true" />
                 {tr("read_full_help")}
               </Link>
             </div>

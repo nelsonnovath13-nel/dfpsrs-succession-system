@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
+import { HelpCircle, type LucideIcon } from "lucide-react";
 
 export function EmptyState({
   icon: Icon,
@@ -43,11 +43,16 @@ export function EmptyState({
           <p className="text-sm text-inkSoft italic">{action.disabledReason}</p>
         ))}
       {helpHref && (
-        <p className="mt-4">
-          <Link href={helpHref} className="text-sm text-primary underline">
+        <div className="mt-4">
+          <Link
+            href={helpHref}
+            className="inline-flex items-center gap-2 border border-primary text-primary font-medium text-sm px-4"
+            style={{ minHeight: 44 }}
+          >
+            <HelpCircle size={16} aria-hidden="true" />
             {helpLabel}
           </Link>
-        </p>
+        </div>
       )}
     </div>
   );
