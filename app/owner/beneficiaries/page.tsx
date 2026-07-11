@@ -7,7 +7,6 @@ import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
-import { getNextOnboardingHref } from "@/lib/onboarding";
 
 type Beneficiary = {
   id: string;
@@ -93,9 +92,10 @@ function BeneficiariesForm() {
       setForm({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
       setShowForm(false);
 
-      const next = await getNextOnboardingHref(supabase, user.id, "/owner/executors?onboarding=1");
-      if (next) {
-        router.push(next);
+      // Navigate immediately on a hardcoded next step -- no extra query gates this,
+      // so a slow/stuck network call can never leave the user stranded here.
+      if (onboarding) {
+        router.push("/owner/executors?onboarding=1");
         return;
       }
       load();

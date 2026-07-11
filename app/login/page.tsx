@@ -26,35 +26,51 @@ function LoginForm() {
       return;
     }
 
-    // Owners with an incomplete onboarding checklist land back on the wizard
-    // instead of a dashboard that would otherwise look empty and unguided.
-    const userId = data.user?.id;
-    if (userId) {
-      const { data: profile } = await supabase.from("dfp_profiles").select("role").eq("id", userId).maybeSingle();
-      if (profile?.role === "owner") {
-        const [{ count: properties }, { count: family }, { count: beneficiaries }, { count: executors }, { data: records }] =
-          await Promise.all([
+    // Owners with an incomplete onboarding checklist land back on the wizard instead of a
+    // dashboard that would otherwise look empty and unguided. This check is best-effort only:
+    // any failure or slowness here must never block the user from reaching the app at all.
+    try {
+      const userId = data.user?.id;
+      if (userId) {
+        const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+        const profileQuery = supabase.from("dfp_profiles").select("role").eq("id", userId).maybeSingle();
+        const result = await Promise.race([profileQuery, timeout]);
+        const role = result?.data?.role;
+
+        if (role === "owner") {
+          const countsPromise = Promise.all([
             supabase.from("dfp_properties").select("id", { count: "exact", head: true }).eq("owner_id", userId),
             supabase.from("dfp_family_members").select("id", { count: "exact", head: true }).eq("owner_id", userId),
             supabase.from("dfp_beneficiaries").select("id", { count: "exact", head: true }).eq("owner_id", userId),
             supabase.from("dfp_executors").select("id", { count: "exact", head: true }).eq("owner_id", userId).eq("status", "active"),
             supabase.from("dfp_succession_records").select("status").eq("owner_id", userId),
           ]);
-        const isComplete =
-          (properties ?? 0) > 0 &&
-          (family ?? 0) > 0 &&
-          (beneficiaries ?? 0) > 0 &&
-          (executors ?? 0) > 0 &&
-          (records ?? []).length > 0 &&
-          (records ?? []).some((r) => r.status !== "draft");
-        setLoading(false);
-        router.refresh();
-        router.push(isComplete ? "/owner/dashboard" : "/owner/onboarding");
-        return;
+          const counts = await Promise.race([countsPromise, timeout]);
+          if (counts) {
+            const [{ count: properties }, { count: family }, { count: beneficiaries }, { count: executors }, { data: records }] = counts;
+            const isComplete =
+              (properties ?? 0) > 0 &&
+              (family ?? 0) > 0 &&
+              (beneficiaries ?? 0) > 0 &&
+              (executors ?? 0) > 0 &&
+              (records ?? []).length > 0 &&
+              (records ?? []).some((r) => r.status !== "draft");
+            router.refresh();
+            router.push(isComplete ? "/owner/dashboard" : "/owner/onboarding");
+            return;
+          }
+          // Timed out -- fall through to a safe default rather than hang here.
+          router.refresh();
+          router.push("/owner/dashboard");
+          return;
+        }
       }
+    } catch {
+      // Fall through to the generic redirect below.
+    } finally {
+      setLoading(false);
     }
 
-    setLoading(false);
     router.refresh();
     router.push("/");
   }

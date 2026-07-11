@@ -8,7 +8,6 @@ import { Stepper } from "@/components/Stepper";
 import { LocationPicker, EMPTY_LOCATION, type LocationValue } from "@/components/LocationPicker";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
-import { getNextOnboardingHref } from "@/lib/onboarding";
 
 const CATEGORIES = [
   "land", "house", "farm", "vehicle", "business", "livestock", "bank_account", "investment", "other",
@@ -102,8 +101,9 @@ export default function NewPropertyPage() {
         return;
       }
 
-      const next = await getNextOnboardingHref(supabase, user.id, "/owner/family?onboarding=1");
-      router.push(next ?? "/owner/properties");
+      // Navigate immediately on a hardcoded next step -- no extra query gates this,
+      // so a slow/stuck network call can never leave the user stranded here.
+      router.push("/owner/family?onboarding=1");
     } catch (err: any) {
       setError(err?.message ?? (sw ? "Hitilafu isiyotarajiwa. Jaribu tena." : "An unexpected error occurred. Please try again."));
     } finally {
