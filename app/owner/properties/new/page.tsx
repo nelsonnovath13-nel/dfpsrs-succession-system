@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import { PageNav } from "@/components/PageNav";
 import { Stepper } from "@/components/Stepper";
+import { LocationPicker, EMPTY_LOCATION, type LocationValue } from "@/components/LocationPicker";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
 
@@ -26,10 +27,10 @@ export default function NewPropertyPage() {
     name: "",
     category: "land",
     description: "",
-    location: "",
     ownership_type: "sole",
     estimated_value: "",
   });
+  const [location, setLocation] = useState<LocationValue>(EMPTY_LOCATION);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,14 +43,20 @@ export default function NewPropertyPage() {
   if (!form.name.trim()) {
     fieldErrors.name = sw ? "Tafadhali ingiza jina la mali" : "Please enter the property name";
   }
-  if (!form.location.trim()) {
-    fieldErrors.location = sw ? "Tafadhali ingiza mahali mali ilipo" : "Please enter where the property is located";
+  if (!location.regionSlug) {
+    fieldErrors.region = sw ? "Tafadhali chagua mkoa" : "Please select a region";
+  } else if (!location.districtSlug) {
+    fieldErrors.location = sw ? "Tafadhali chagua wilaya" : "Please select a district";
+  } else if (!location.wardSlug) {
+    fieldErrors.location = sw ? "Tafadhali chagua kata" : "Please select a ward";
+  } else if (!location.streetName) {
+    fieldErrors.location = sw ? "Tafadhali chagua kijiji/mtaa" : "Please select a village/street";
   }
   if (form.estimated_value && Number.isNaN(Number(form.estimated_value))) {
     fieldErrors.estimated_value = sw ? "Tafadhali ingiza namba sahihi" : "Please enter a valid number";
   }
 
-  const stepFields: string[][] = [["name"], ["location"], ["estimated_value"], []];
+  const stepFields: string[][] = [["name"], ["region", "location"], ["estimated_value"], []];
   const canAdvance = stepFields[step].every((f) => !fieldErrors[f]);
 
   function next() {
@@ -69,13 +76,17 @@ export default function NewPropertyPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
+    const composedLocation = [location.streetName, location.wardName, location.districtName, location.regionName]
+      .filter(Boolean)
+      .join(", ");
+
     const { error } = await supabase.from("dfp_properties").insert({
       owner_id: user.id,
       name: form.name,
       category: form.category,
       ownership_type: form.ownership_type,
       estimated_value: form.estimated_value ? Number(form.estimated_value) : null,
-      location: form.location || null,
+      location: composedLocation || null,
       description: form.description || null,
     });
     setLoading(false);
@@ -135,22 +146,15 @@ export default function NewPropertyPage() {
 
         {step === 1 && (
           <div className="space-y-4">
-            <div>
-              <label className="label">{sw ? "Mahali Mali Ilipo" : "Location"}</label>
-              <input
-                required
-                className="input-field"
-                placeholder={sw ? "mfano: Mkoa, Wilaya, Kata, Kijiji/Mtaa" : "e.g. Region, District, Ward, Village/Street"}
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-                onBlur={() => markTouched("location")}
-                aria-invalid={touched.location && !!fieldErrors.location}
-                aria-describedby={touched.location && fieldErrors.location ? "location-error" : undefined}
-              />
-              {touched.location && fieldErrors.location && (
-                <p id="location-error" role="alert" className="text-sm text-danger mt-1">{fieldErrors.location}</p>
-              )}
-            </div>
+            <LocationPicker
+              value={location}
+              onChange={setLocation}
+              touched={!!(touched.region || touched.location)}
+              onBlur={() => {
+                markTouched("region");
+                markTouched("location");
+              }}
+            />
             <div>
               <label className="label">{sw ? "Aina ya Umiliki" : "Ownership Type"}</label>
               <select className="input-field" value={form.ownership_type} onChange={(e) => setForm({ ...form, ownership_type: e.target.value })}>
@@ -204,7 +208,9 @@ export default function NewPropertyPage() {
               </div>
               <div className="flex justify-between px-3 py-2">
                 <dt className="text-inkSoft">{sw ? "Mahali" : "Location"}</dt>
-                <dd className="font-medium text-ink">{form.location || "—"}</dd>
+                <dd className="font-medium text-ink text-right">
+                  {[location.streetName, location.wardName, location.districtName, location.regionName].filter(Boolean).join(", ") || "—"}
+                </dd>
               </div>
               <div className="flex justify-between px-3 py-2">
                 <dt className="text-inkSoft">{sw ? "Thamani" : "Value"}</dt>
