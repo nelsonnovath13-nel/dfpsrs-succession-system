@@ -30,29 +30,41 @@ export default function NewSuccessionPlanPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  async function loadFormData() {
+    setDataLoading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setDataLoading(false);
+      return;
+    }
+
+    // Each query is isolated (allSettled, not all) so one failing/slow lookup — e.g. the
+    // witness/leader/legal profile lists — can never blank out the properties/beneficiaries
+    // you already have, which is what made this page look empty even after a successful save.
+    const results = await Promise.allSettled([
+      supabase.from("dfp_properties").select("id, name, category").eq("owner_id", user.id),
+      supabase.from("dfp_beneficiaries").select("id, full_name, relationship").eq("owner_id", user.id),
+      supabase.from("dfp_profiles").select("id, full_name").eq("role", "witness"),
+      supabase.from("dfp_profiles").select("id, full_name").eq("role", "leader"),
+      supabase.from("dfp_profiles").select("id, full_name").eq("role", "legal"),
+    ]);
+
+    const [propsRes, bensRes, witnessesRes, leadersRes, legalRes] = results;
+    setProperties(propsRes.status === "fulfilled" ? propsRes.value.data ?? [] : []);
+    setBeneficiaries(bensRes.status === "fulfilled" ? bensRes.value.data ?? [] : []);
+    setWitnessOptions(witnessesRes.status === "fulfilled" ? witnessesRes.value.data ?? [] : []);
+    setLeaderOptions(leadersRes.status === "fulfilled" ? leadersRes.value.data ?? [] : []);
+    setLegalOptions(legalRes.status === "fulfilled" ? legalRes.value.data ?? [] : []);
+    setDataLoading(false);
+  }
 
   useEffect(() => {
-    (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const [{ data: props }, { data: bens }, { data: witnesses }, { data: leaders }, { data: legalOfficers }] =
-        await Promise.all([
-          supabase.from("dfp_properties").select("id, name, category").eq("owner_id", user.id),
-          supabase.from("dfp_beneficiaries").select("id, full_name, relationship").eq("owner_id", user.id),
-          supabase.from("dfp_profiles").select("id, full_name").eq("role", "witness"),
-          supabase.from("dfp_profiles").select("id, full_name").eq("role", "leader"),
-          supabase.from("dfp_profiles").select("id, full_name").eq("role", "legal"),
-        ]);
-
-      setProperties(props ?? []);
-      setBeneficiaries(bens ?? []);
-      setWitnessOptions(witnesses ?? []);
-      setLeaderOptions(leaders ?? []);
-      setLegalOptions(legalOfficers ?? []);
-    })();
+    loadFormData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
   function addAllocationRow() {
@@ -172,10 +184,14 @@ export default function NewSuccessionPlanPage() {
       <PageNav exitHref="/owner/succession-plans" />
       <h1 className="text-xl font-semibold text-primary mb-6">New Succession Record</h1>
 
-      {(properties.length === 0 || beneficiaries.length === 0) && (
-        <div className="card mb-6 bg-white border-amber-700 text-amber-800 text-sm">
-          You need at least one property and one beneficiary before building a succession record.
-        </div>
+      {dataLoading ? (
+        <p className="text-sm text-neutralDark mb-6">Loading…</p>
+      ) : (
+        (properties.length === 0 || beneficiaries.length === 0) && (
+          <div className="card mb-6 bg-white border-amber-700 text-amber-800 text-sm">
+            You need at least one property and one beneficiary before building a succession record.
+          </div>
+        )
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">

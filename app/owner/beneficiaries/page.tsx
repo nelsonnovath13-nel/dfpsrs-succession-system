@@ -33,6 +33,11 @@ function BeneficiariesForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [gate, setGate] = useState<"ask" | "count" | "filling" | "idle">("idle");
+  const [targetCountInput, setTargetCountInput] = useState("1");
+  const [targetCount, setTargetCount] = useState(1);
+  const [filledCount, setFilledCount] = useState(0);
+
   async function load() {
     setLoading(true);
     const {
@@ -61,8 +66,25 @@ function BeneficiariesForm() {
   }, []);
 
   useEffect(() => {
-    if (onboarding) setShowForm(true);
+    if (onboarding) setGate("ask");
   }, [onboarding]);
+
+  function answerAdd(yes: boolean) {
+    if (!yes) {
+      router.push("/owner/executors?onboarding=1");
+      return;
+    }
+    setGate("count");
+  }
+
+  function startFilling(e: React.FormEvent) {
+    e.preventDefault();
+    const n = Math.max(1, Math.min(20, Number(targetCountInput) || 1));
+    setTargetCount(n);
+    setFilledCount(0);
+    setGate("filling");
+    setShowForm(true);
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -90,14 +112,19 @@ function BeneficiariesForm() {
         return;
       }
       setForm({ full_name: "", relationship: "", phone_number: "", national_id: "", linked_user_id: "" });
-      setShowForm(false);
 
-      // Navigate immediately on a hardcoded next step -- no extra query gates this,
-      // so a slow/stuck network call can never leave the user stranded here.
-      if (onboarding) {
+      if (gate === "filling") {
+        const justFilled = filledCount + 1;
+        if (justFilled < targetCount) {
+          setFilledCount(justFilled);
+          load();
+          return;
+        }
         router.push("/owner/executors?onboarding=1");
         return;
       }
+
+      setShowForm(false);
       load();
     } catch (err: any) {
       setError(err?.message ?? (lang === "sw" ? "Hitilafu isiyotarajiwa. Jaribu tena." : "An unexpected error occurred. Please try again."));
@@ -116,10 +143,40 @@ function BeneficiariesForm() {
     <DashboardShell role="owner">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-primary">Beneficiary Registry</h1>
-        <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
-          {showForm ? "Cancel" : "Add Beneficiary"}
-        </button>
+        {gate === "idle" && (
+          <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
+            {showForm ? "Cancel" : "Add Beneficiary"}
+          </button>
+        )}
       </div>
+
+      {gate === "ask" && (
+        <div className="card mb-6 max-w-md">
+          <p className="font-medium text-ink mb-3">
+            {lang === "sw" ? "Je, unataka kuongeza mnufaika sasa?" : "Do you want to add a beneficiary now?"}
+          </p>
+          <div className="flex gap-3">
+            <button className="btn-primary" onClick={() => answerAdd(true)}>{lang === "sw" ? "Ndiyo" : "Yes"}</button>
+            <button className="btn-outline" onClick={() => answerAdd(false)}>{lang === "sw" ? "Hapana" : "No"}</button>
+          </div>
+        </div>
+      )}
+
+      {gate === "count" && (
+        <form onSubmit={startFilling} className="card mb-6 max-w-md space-y-4">
+          <div>
+            <label className="label">{lang === "sw" ? "Wanufaika wangapi unataka kuongeza?" : "How many beneficiaries do you want to add?"}</label>
+            <input type="number" required min={1} max={20} className="input-field" value={targetCountInput} onChange={(e) => setTargetCountInput(e.target.value)} />
+          </div>
+          <button type="submit" className="btn-primary">{lang === "sw" ? "Endelea" : "Continue"}</button>
+        </form>
+      )}
+
+      {gate === "filling" && targetCount > 1 && (
+        <p className="text-sm font-medium text-primary mb-3">
+          {lang === "sw" ? `Mnufaika wa ${filledCount + 1} kati ya ${targetCount}` : `Beneficiary ${filledCount + 1} of ${targetCount}`}
+        </p>
+      )}
 
       {showForm && (
         <form onSubmit={handleAdd} className="card mb-6 space-y-4 max-w-xl">

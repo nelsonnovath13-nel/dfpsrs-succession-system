@@ -52,6 +52,11 @@ function ExecutorsForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [gate, setGate] = useState<"ask" | "count" | "filling" | "idle">("idle");
+  const [targetCountInput, setTargetCountInput] = useState("1");
+  const [targetCount, setTargetCount] = useState(1);
+  const [filledCount, setFilledCount] = useState(0);
+
   async function load() {
     setLoading(true);
     const {
@@ -86,8 +91,25 @@ function ExecutorsForm() {
   }, []);
 
   useEffect(() => {
-    if (onboarding) setShowForm(true);
+    if (onboarding) setGate("ask");
   }, [onboarding]);
+
+  function answerAdd(yes: boolean) {
+    if (!yes) {
+      router.push("/owner/succession-plans/new?onboarding=1");
+      return;
+    }
+    setGate("count");
+  }
+
+  function startFilling(e: React.FormEvent) {
+    e.preventDefault();
+    const n = Math.max(1, Math.min(20, Number(targetCountInput) || 1));
+    setTargetCount(n);
+    setFilledCount(0);
+    setGate("filling");
+    setShowForm(true);
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -116,14 +138,19 @@ function ExecutorsForm() {
         return;
       }
       setForm({ full_name: "", role_type: "executor", phone_number: "", national_id: "", family_member_id: "", linked_user_id: "" });
-      setShowForm(false);
 
-      // Navigate immediately on a hardcoded next step -- no extra query gates this,
-      // so a slow/stuck network call can never leave the user stranded here.
-      if (onboarding) {
+      if (gate === "filling") {
+        const justFilled = filledCount + 1;
+        if (justFilled < targetCount) {
+          setFilledCount(justFilled);
+          load();
+          return;
+        }
         router.push("/owner/succession-plans/new?onboarding=1");
         return;
       }
+
+      setShowForm(false);
       load();
     } catch (err: any) {
       setError(err?.message ?? (lang === "sw" ? "Hitilafu isiyotarajiwa. Jaribu tena." : "An unexpected error occurred. Please try again."));
@@ -142,15 +169,45 @@ function ExecutorsForm() {
     <DashboardShell role="owner">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-primary">Executors & Representatives</h1>
-        <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
-          {showForm ? "Cancel" : "+ Appoint"}
-        </button>
+        {gate === "idle" && (
+          <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
+            {showForm ? "Cancel" : "+ Appoint"}
+          </button>
+        )}
       </div>
       <p className="text-sm text-neutralDark mb-6">
         Appoint an estate executor, family representative, trusted contact, or legal
         representative. If linked to a registered account, they can sign in to track your
         estate&apos;s progress and receive notifications once the succession release workflow begins.
       </p>
+
+      {gate === "ask" && (
+        <div className="card mb-6 max-w-md">
+          <p className="font-medium text-ink mb-3">
+            {lang === "sw" ? "Je, unataka kuteua msimamizi/mwakilishi sasa?" : "Do you want to appoint an executor/representative now?"}
+          </p>
+          <div className="flex gap-3">
+            <button className="btn-primary" onClick={() => answerAdd(true)}>{lang === "sw" ? "Ndiyo" : "Yes"}</button>
+            <button className="btn-outline" onClick={() => answerAdd(false)}>{lang === "sw" ? "Hapana" : "No"}</button>
+          </div>
+        </div>
+      )}
+
+      {gate === "count" && (
+        <form onSubmit={startFilling} className="card mb-6 max-w-md space-y-4">
+          <div>
+            <label className="label">{lang === "sw" ? "Wasimamizi/wawakilishi wangapi unataka kuongeza?" : "How many executors/representatives do you want to add?"}</label>
+            <input type="number" required min={1} max={20} className="input-field" value={targetCountInput} onChange={(e) => setTargetCountInput(e.target.value)} />
+          </div>
+          <button type="submit" className="btn-primary">{lang === "sw" ? "Endelea" : "Continue"}</button>
+        </form>
+      )}
+
+      {gate === "filling" && targetCount > 1 && (
+        <p className="text-sm font-medium text-primary mb-3">
+          {lang === "sw" ? `Namba ${filledCount + 1} kati ya ${targetCount}` : `Number ${filledCount + 1} of ${targetCount}`}
+        </p>
+      )}
 
       {showForm && (
         <form onSubmit={handleAdd} className="card mb-6 space-y-4 max-w-xl">
