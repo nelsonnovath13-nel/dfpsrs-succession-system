@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, Landmark, Users, HeartHandshake, ShieldCheck, FileText, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { withTimeout } from "@/lib/withTimeout";
 
 type StepKey = "properties" | "family" | "beneficiaries" | "executors" | "record" | "submit";
 
@@ -43,25 +44,46 @@ export function WelcomeWizard() {
     (async () => {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-      const [{ count: properties }, { count: family }, { count: beneficiaries }, { count: executors }, { data: records }] =
-        await Promise.all([
+      const zeroCount = { count: 0 };
+      const emptyList = { data: [] as any[] };
+      const [propertiesRes, familyRes, beneficiariesRes, executorsRes, recordsRes] = await Promise.all([
+        withTimeout(
           supabase.from("dfp_properties").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
+          8000,
+          zeroCount as any
+        ),
+        withTimeout(
           supabase.from("dfp_family_members").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
+          8000,
+          zeroCount as any
+        ),
+        withTimeout(
           supabase.from("dfp_beneficiaries").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
+          8000,
+          zeroCount as any
+        ),
+        withTimeout(
           supabase.from("dfp_executors").select("id", { count: "exact", head: true }).eq("owner_id", user.id).eq("status", "active"),
-          supabase.from("dfp_succession_records").select("status").eq("owner_id", user.id),
-        ]);
+          8000,
+          zeroCount as any
+        ),
+        withTimeout(supabase.from("dfp_succession_records").select("status").eq("owner_id", user.id), 8000, emptyList as any),
+      ]);
 
+      const records = recordsRes.data;
       setDone({
-        properties: (properties ?? 0) > 0,
-        family: (family ?? 0) > 0,
-        beneficiaries: (beneficiaries ?? 0) > 0,
-        executors: (executors ?? 0) > 0,
+        properties: (propertiesRes.count ?? 0) > 0,
+        family: (familyRes.count ?? 0) > 0,
+        beneficiaries: (beneficiariesRes.count ?? 0) > 0,
+        executors: (executorsRes.count ?? 0) > 0,
         record: (records ?? []).length > 0,
-        submit: (records ?? []).some((r) => r.status !== "draft"),
+        submit: (records ?? []).some((r: any) => r.status !== "draft"),
       });
       setLoading(false);
     })();

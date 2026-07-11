@@ -7,6 +7,7 @@ import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { withTimeout } from "@/lib/withTimeout";
 
 type Member = {
   id: string;
@@ -107,21 +108,30 @@ function FamilyStructureForm() {
 
   async function load() {
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("dfp_family_members")
-      .select("id, full_name, relationship_type, phone_number, national_id, date_of_birth, parent_member_id")
-      .eq("owner_id", user.id)
-      .order("created_at", { ascending: true });
-    setMembers(data ?? []);
+    try {
+      const {
+        data: { user },
+      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      if (!user) return;
 
-    const { data: profile } = await supabase.from("dfp_profiles").select("full_name").eq("id", user.id).maybeSingle();
-    setOwnerName(profile?.full_name ?? "");
-
-    setLoading(false);
+      const emptyList = { data: [] as any[] };
+      const [membersRes, profileRes] = await Promise.all([
+        withTimeout(
+          supabase
+            .from("dfp_family_members")
+            .select("id, full_name, relationship_type, phone_number, national_id, date_of_birth, parent_member_id")
+            .eq("owner_id", user.id)
+            .order("created_at", { ascending: true }),
+          8000,
+          emptyList as any
+        ),
+        withTimeout(supabase.from("dfp_profiles").select("full_name").eq("id", user.id).maybeSingle(), 8000, { data: null } as any),
+      ]);
+      setMembers(membersRes.data ?? []);
+      setOwnerName(profileRes.data?.full_name ?? "");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

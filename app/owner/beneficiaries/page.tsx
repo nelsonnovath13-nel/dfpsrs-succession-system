@@ -7,6 +7,7 @@ import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { withTimeout } from "@/lib/withTimeout";
 
 type Beneficiary = {
   id: string;
@@ -40,24 +41,34 @@ function BeneficiariesForm() {
 
   async function load() {
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("dfp_beneficiaries")
-      .select("id, full_name, relationship, phone_number, national_id, linked_user_id")
-      .eq("owner_id", user.id)
-      .order("created_at", { ascending: false });
-    setList(data ?? []);
+    try {
+      const {
+        data: { user },
+      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      if (!user) return;
 
-    const { data: users } = await supabase
-      .from("dfp_profiles")
-      .select("id, full_name, phone_number")
-      .eq("role", "beneficiary");
-    setLinkable(users ?? []);
-
-    setLoading(false);
+      const emptyList = { data: [] as any[] };
+      const [listRes, usersRes] = await Promise.all([
+        withTimeout(
+          supabase
+            .from("dfp_beneficiaries")
+            .select("id, full_name, relationship, phone_number, national_id, linked_user_id")
+            .eq("owner_id", user.id)
+            .order("created_at", { ascending: false }),
+          8000,
+          emptyList as any
+        ),
+        withTimeout(
+          supabase.from("dfp_profiles").select("id, full_name, phone_number").eq("role", "beneficiary"),
+          8000,
+          emptyList as any
+        ),
+      ]);
+      setList(listRes.data ?? []);
+      setLinkable(usersRes.data ?? []);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

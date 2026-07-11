@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { withTimeout } from "@/lib/withTimeout";
 
 type Executor = {
   id: string;
@@ -59,30 +60,36 @@ function ExecutorsForm() {
 
   async function load() {
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const {
+        data: { user },
+      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      if (!user) return;
 
-    const { data } = await supabase
-      .from("dfp_executors")
-      .select("id, full_name, phone_number, national_id, role_type, status, linked_user_id")
-      .eq("owner_id", user.id)
-      .order("appointed_at", { ascending: false });
-    setList(data ?? []);
-
-    const { data: users } = await supabase
-      .from("dfp_profiles")
-      .select("id, full_name, phone_number");
-    setLinkable(users ?? []);
-
-    const { data: family } = await supabase
-      .from("dfp_family_members")
-      .select("id, full_name")
-      .eq("owner_id", user.id);
-    setFamilyMembers(family ?? []);
-
-    setLoading(false);
+      const emptyList = { data: [] as any[] };
+      const [listRes, usersRes, familyRes] = await Promise.all([
+        withTimeout(
+          supabase
+            .from("dfp_executors")
+            .select("id, full_name, phone_number, national_id, role_type, status, linked_user_id")
+            .eq("owner_id", user.id)
+            .order("appointed_at", { ascending: false }),
+          8000,
+          emptyList as any
+        ),
+        withTimeout(supabase.from("dfp_profiles").select("id, full_name, phone_number"), 8000, emptyList as any),
+        withTimeout(
+          supabase.from("dfp_family_members").select("id, full_name").eq("owner_id", user.id),
+          8000,
+          emptyList as any
+        ),
+      ]);
+      setList(listRes.data ?? []);
+      setLinkable(usersRes.data ?? []);
+      setFamilyMembers(familyRes.data ?? []);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

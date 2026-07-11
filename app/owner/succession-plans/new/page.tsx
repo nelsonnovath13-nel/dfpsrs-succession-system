@@ -9,6 +9,7 @@ import { PageNav } from "@/components/PageNav";
 import { Stepper } from "@/components/Stepper";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { withTimeout } from "@/lib/withTimeout";
 
 type Property = { id: string; name: string; category: string; estimated_value: number | null };
 type Beneficiary = { id: string; full_name: string; relationship: string; linked_user_id: string | null };
@@ -51,32 +52,47 @@ export default function NewSuccessionPlanPage() {
 
   async function loadFormData() {
     setDataLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    try {
+      const {
+        data: { user },
+      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
+      if (!user) {
+        setError(
+          sw
+            ? "Imeshindikana kupata kikao chako. Onyesha upya ukurasa (refresh) au ingia tena."
+            : "Could not confirm your session. Refresh the page or sign in again."
+        );
+        return;
+      }
+
+      // Every query is independently timeout-guarded (8s) so a single hung request --
+      // not just a failed one -- can never leave this page stuck loading forever, and
+      // wrapped again individually so one hang never blocks the others from showing.
+      const emptyList = { data: [] as any[] };
+      const [propsRes, bensRes, witnessesRes, leadersRes, legalRes] = await Promise.all([
+        withTimeout(
+          supabase.from("dfp_properties").select("id, name, category, estimated_value").eq("owner_id", user.id),
+          8000,
+          emptyList as any
+        ),
+        withTimeout(
+          supabase.from("dfp_beneficiaries").select("id, full_name, relationship, linked_user_id").eq("owner_id", user.id),
+          8000,
+          emptyList as any
+        ),
+        withTimeout(supabase.from("dfp_profiles").select("id, full_name").eq("role", "witness"), 8000, emptyList as any),
+        withTimeout(supabase.from("dfp_profiles").select("id, full_name").eq("role", "leader"), 8000, emptyList as any),
+        withTimeout(supabase.from("dfp_profiles").select("id, full_name").eq("role", "legal"), 8000, emptyList as any),
+      ]);
+
+      setProperties(propsRes.data ?? []);
+      setBeneficiaries(bensRes.data ?? []);
+      setWitnessOptions(witnessesRes.data ?? []);
+      setLeaderOptions(leadersRes.data ?? []);
+      setLegalOptions(legalRes.data ?? []);
+    } finally {
       setDataLoading(false);
-      return;
     }
-
-    // Each query is isolated (allSettled, not all) so one failing/slow lookup — e.g. the
-    // witness/leader/legal profile lists — can never blank out the properties/beneficiaries
-    // you already have, which is what made this page look empty even after a successful save.
-    const results = await Promise.allSettled([
-      supabase.from("dfp_properties").select("id, name, category, estimated_value").eq("owner_id", user.id),
-      supabase.from("dfp_beneficiaries").select("id, full_name, relationship, linked_user_id").eq("owner_id", user.id),
-      supabase.from("dfp_profiles").select("id, full_name").eq("role", "witness"),
-      supabase.from("dfp_profiles").select("id, full_name").eq("role", "leader"),
-      supabase.from("dfp_profiles").select("id, full_name").eq("role", "legal"),
-    ]);
-
-    const [propsRes, bensRes, witnessesRes, leadersRes, legalRes] = results;
-    setProperties(propsRes.status === "fulfilled" ? propsRes.value.data ?? [] : []);
-    setBeneficiaries(bensRes.status === "fulfilled" ? bensRes.value.data ?? [] : []);
-    setWitnessOptions(witnessesRes.status === "fulfilled" ? witnessesRes.value.data ?? [] : []);
-    setLeaderOptions(leadersRes.status === "fulfilled" ? leadersRes.value.data ?? [] : []);
-    setLegalOptions(legalRes.status === "fulfilled" ? legalRes.value.data ?? [] : []);
-    setDataLoading(false);
   }
 
   useEffect(() => {

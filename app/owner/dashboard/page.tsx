@@ -8,6 +8,7 @@ import { WelcomeWizard } from "@/components/WelcomeWizard";
 import { StatCard, StatusBadge, VerificationTimeline } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
+import { withTimeout } from "@/lib/withTimeout";
 
 type SuccessionRecord = {
   id: string;
@@ -35,40 +36,51 @@ export default function OwnerDashboardPage() {
     (async () => {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await withTimeout(supabase.auth.getUser(), 8000, { data: { user: null } } as any);
       if (!user) return;
 
-      const { data: properties } = await supabase
-        .from("dfp_properties")
-        .select("id, estimated_value")
-        .eq("owner_id", user.id);
+      const emptyList = { data: [] as any[] };
+      const zeroCount = { count: 0 };
+      const [propertiesRes, plansRes, beneficiariesRes, familyRes, witnessesRes, compRes] = await Promise.all([
+        withTimeout(supabase.from("dfp_properties").select("id, estimated_value").eq("owner_id", user.id), 8000, emptyList as any),
+        withTimeout(
+          supabase
+            .from("dfp_succession_records")
+            .select("id, title, status, created_at")
+            .eq("owner_id", user.id)
+            .order("created_at", { ascending: false }),
+          8000,
+          emptyList as any
+        ),
+        withTimeout(
+          supabase.from("dfp_beneficiaries").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
+          8000,
+          zeroCount as any
+        ),
+        withTimeout(
+          supabase.from("dfp_family_members").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
+          8000,
+          zeroCount as any
+        ),
+        withTimeout(
+          supabase
+            .from("dfp_witnesses")
+            .select("id, dfp_succession_records!inner(owner_id)", { count: "exact", head: true })
+            .eq("dfp_succession_records.owner_id", user.id),
+          8000,
+          zeroCount as any
+        ),
+        withTimeout(supabase.rpc("dfp_estate_completeness", { p_owner_id: user.id }), 8000, { data: null } as any),
+      ]);
 
-      const { data: plans } = await supabase
-        .from("dfp_succession_records")
-        .select("id, title, status, created_at")
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: false });
+      const properties = propertiesRes.data;
+      const plans = plansRes.data;
 
-      const { count: beneficiaries } = await supabase
-        .from("dfp_beneficiaries")
-        .select("id", { count: "exact", head: true })
-        .eq("owner_id", user.id);
-
-      const { count: family } = await supabase
-        .from("dfp_family_members")
-        .select("id", { count: "exact", head: true })
-        .eq("owner_id", user.id);
-
-      const { count: witnesses } = await supabase
-        .from("dfp_witnesses")
-        .select("id, dfp_succession_records!inner(owner_id)", { count: "exact", head: true })
-        .eq("dfp_succession_records.owner_id", user.id);
-
-      const pending = (plans ?? []).filter((p) =>
+      const pending = (plans ?? []).filter((p: any) =>
         ["submitted", "witness_review", "local_leader_review", "legal_review"].includes(p.status)
       ).length;
       const totalValue = (properties ?? []).reduce(
-        (sum, p) => sum + (Number(p.estimated_value) || 0),
+        (sum: number, p: any) => sum + (Number(p.estimated_value) || 0),
         0
       );
 
@@ -77,14 +89,13 @@ export default function OwnerDashboardPage() {
         plans: plans?.length ?? 0,
         pending,
         value: totalValue,
-        beneficiaries: beneficiaries ?? 0,
-        family: family ?? 0,
+        beneficiaries: beneficiariesRes.count ?? 0,
+        family: familyRes.count ?? 0,
       });
       setActivePlan((plans && plans[0]) ?? null);
-      setWitnessCount(witnesses ?? 0);
+      setWitnessCount(witnessesRes.count ?? 0);
 
-      const { data: comp } = await supabase.rpc("dfp_estate_completeness", { p_owner_id: user.id });
-      if (comp) setCompleteness(comp as any);
+      if (compRes.data) setCompleteness(compRes.data as any);
     })();
   }, [supabase]);
 
