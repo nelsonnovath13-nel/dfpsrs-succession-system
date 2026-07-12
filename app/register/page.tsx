@@ -29,6 +29,9 @@ export default function RegisterPage() {
   const [role, setRole] = useState("owner");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,10 +69,61 @@ export default function RegisterPage() {
       return;
     }
 
-    // Do not sign the user straight in after registering — send them back to the login
-    // page so they explicitly authenticate with the credentials they just created,
-    // rather than being taken straight into the app.
+    // With real email confirmation enabled, Supabase returns a user but no session until the
+    // confirmation link is clicked -- signing in immediately would just fail with "Email not
+    // confirmed", so send them to a dedicated waiting screen instead of straight to /login.
+    if (signUpData.user && !signUpData.session) {
+      setAwaitingConfirmation(true);
+      return;
+    }
+
     router.push("/login?registered=1");
+  }
+
+  async function handleResend() {
+    setResending(true);
+    setResendMsg(null);
+    const { error: resendError } = await supabase.auth.resend({ type: "signup", email });
+    setResending(false);
+    setResendMsg(
+      resendError
+        ? resendError.message
+        : sw
+        ? "Barua pepe ya uthibitisho imetumwa tena. Angalia pia folda ya Spam/Junk."
+        : "Confirmation email resent. Please also check your Spam/Junk folder."
+    );
+  }
+
+  if (awaitingConfirmation) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-6 py-10 bg-surface">
+        <div className="w-full max-w-md text-center">
+          <img src="/nembo.png" alt="URT" className="mx-auto mb-4 h-12 w-12 object-contain" />
+          <div className="card space-y-4">
+            <h1 className="text-lg font-semibold text-neutralDark">
+              {sw ? "Thibitisha Barua Pepe Yako" : "Confirm Your Email"}
+            </h1>
+            <p className="text-sm text-neutralDark">
+              {sw
+                ? `Tumetuma kiungo cha uthibitisho kwa ${email}. Bofya kiungo hicho ili kuamilisha akaunti yako, kisha rudi hapa uingie.`
+                : `We've sent a confirmation link to ${email}. Click that link to activate your account, then come back here to sign in.`}
+            </p>
+            <p className="text-xs text-inkSoft">
+              {sw
+                ? "Haujaipata? Angalia folda ya Spam/Junk, au tuma tena hapa chini."
+                : "Didn't get it? Check your Spam/Junk folder, or resend it below."}
+            </p>
+            {resendMsg && <div role="status" className="text-xs text-secondary bg-white border border-secondary px-3 py-2">{resendMsg}</div>}
+            <button onClick={handleResend} disabled={resending} className="btn-outline text-sm w-full">
+              {resending ? (sw ? "Inatuma…" : "Resending…") : sw ? "Tuma Tena Barua Pepe" : "Resend Confirmation Email"}
+            </button>
+            <Link href="/login" className="text-primary text-sm font-medium block">
+              {sw ? "Nenda kwenye Ukurasa wa Kuingia" : "Go to Sign In"}
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
