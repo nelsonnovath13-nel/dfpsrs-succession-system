@@ -95,5 +95,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
+  // Static files under /public (the national emblem, etc.) have no extension check here, so
+  // without excluding common image/asset extensions the middleware treats them as protected
+  // app routes and redirects unauthenticated requests for them to /login -- breaking every
+  // <img> tag that points at a public asset for anyone who isn't logged in yet.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|avif)$).*)"],
 };
