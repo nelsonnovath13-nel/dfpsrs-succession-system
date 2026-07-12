@@ -7,6 +7,7 @@ import { CheckCircle2, FileText, Download, Eye } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import { StatusBadge, VerificationTimeline } from "@/components/ui";
 import { SignaturePad } from "@/components/SignaturePad";
+import { VerifierBadge } from "@/components/VerifierBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
 
@@ -412,6 +413,11 @@ export default function VerificationReview({ role }: { role: "witness" | "leader
             {sw
               ? `Unaangalia Ripoti Rasmi ya Ukaguzi iliyotengenezwa saa ${new Date(plan.report_generated_at).toLocaleString()}. Mabadiliko yoyote ya mmiliki baada ya wakati huu hayaonekani hapa.`
               : `You are viewing the official Review Report generated at ${new Date(plan.report_generated_at).toLocaleString()}. Any changes the owner makes after this point are not reflected here.`}
+          </div>
+        )}
+        {verification?.verifier_id && (
+          <div className="mb-4">
+            <VerifierBadge userId={verification.verifier_id} />
           </div>
         )}
         {/* Case Summary */}

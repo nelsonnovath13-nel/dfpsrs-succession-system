@@ -58,6 +58,7 @@ const ICON: Record<string, LucideIcon> = {
   my_inheritance: Gift,
   onboarding: Compass,
   vault: Vault,
+  verifiers: ShieldCheck,
 };
 
 function buildNav(role: Role, tr: (k: string) => string): NavItem[] {
@@ -79,19 +80,23 @@ function buildNav(role: Role, tr: (k: string) => string): NavItem[] {
     witness: [
       { href: "/witness/dashboard", key: "verification_requests", label: tr("verification_requests") },
       { href: "/witness/death-verifications", key: "death_verifications", label: tr("death_verifications") },
+      { href: "/verifier/dashboard", key: "verifiers", label: tr("verifiers") },
     ],
     leader: [
       { href: "/leader/dashboard", key: "verification_requests", label: tr("verification_requests") },
       { href: "/leader/death-verifications", key: "death_verifications", label: tr("death_verifications") },
+      { href: "/verifier/dashboard", key: "verifiers", label: tr("verifiers") },
     ],
     legal: [
       { href: "/legal/dashboard", key: "legal_review", label: tr("legal_review") },
       { href: "/legal/death-verifications", key: "death_verifications", label: tr("death_verifications") },
       { href: "/legal/flags", key: "legal_flags", label: tr("legal_flags") },
+      { href: "/verifier/dashboard", key: "verifiers", label: tr("verifiers") },
     ],
     admin: [
       { href: "/admin/dashboard", key: "overview", label: tr("overview") },
       { href: "/admin/users", key: "users", label: tr("users") },
+      { href: "/admin/verifiers", key: "verifiers", label: tr("verifiers") },
       { href: "/admin/death-verifications", key: "death_verifications", label: tr("death_verifications") },
       { href: "/admin/audit-logs", key: "audit_logs", label: tr("audit_logs") },
       { href: "/admin/reports", key: "reports", label: tr("reports") },

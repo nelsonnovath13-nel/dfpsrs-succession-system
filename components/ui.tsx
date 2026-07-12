@@ -44,6 +44,9 @@ const STATUS_STYLES: Record<string, string> = {
   mediation: "bg-white text-amber-800 border-amber-700",
   resolved: "bg-white text-secondary border-secondary",
   closed: "bg-gray-100 text-neutralDark border-gray-400",
+  pending_review: "bg-white text-amber-800 border-amber-700",
+  suspended: "bg-white text-red-800 border-red-800",
+  expired: "bg-gray-100 text-neutralDark border-gray-400",
 };
 
 const STATUS_KEY: Record<string, string> = {
@@ -73,6 +76,9 @@ const STATUS_KEY: Record<string, string> = {
   mediation: "status_mediation",
   resolved: "status_resolved",
   closed: "status_closed",
+  pending_review: "status_pending_review",
+  suspended: "status_suspended",
+  expired: "status_expired",
 };
 
 export function StatusBadge({ status }: { status: string }) {
