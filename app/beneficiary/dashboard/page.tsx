@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Confirmation = {
   id: string;
@@ -21,6 +22,8 @@ type Allocation = {
 
 export default function BeneficiaryDashboardPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [confirmations, setConfirmations] = useState<Confirmation[]>([]);
   const [allocations, setAllocations] = useState<Allocation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,18 +78,20 @@ export default function BeneficiaryDashboardPage() {
 
   return (
     <DashboardShell role="beneficiary">
-      <h1 className="text-xl font-semibold text-primary mb-2">My Inheritance</h1>
+      <h1 className="text-xl font-semibold text-primary mb-2">{sw ? "Urithi Wangu" : "My Inheritance"}</h1>
       <p className="text-sm text-neutralDark mb-6">
-        This shows succession records where you are a named beneficiary, once fully verified.
+        {sw
+          ? "Hii inaonyesha kumbukumbu za urithi ambazo umetajwa kama mnufaika, mara zinapothibitishwa kikamilifu."
+          : "This shows succession records where you are a named beneficiary, once fully verified."}
       </p>
 
       {loading ? (
-        <p className="text-sm text-neutralDark">Loading…</p>
+        <p className="text-sm text-neutralDark">{sw ? "Inapakia…" : "Loading…"}</p>
       ) : confirmations.length === 0 ? (
         <div className="card text-center py-10 text-neutralDark">
-          Nothing to show yet. This page updates automatically once a family member names you in
-          a verified succession record — make sure the owner links your beneficiary record to
-          this account (by your phone number) when they add you.
+          {sw
+            ? "Bado hakuna kitu cha kuonyesha. Ukurasa huu husasishwa kiotomatiki mara mwanafamilia anapokutaja kwenye kumbukumbu ya urithi iliyothibitishwa — hakikisha mmiliki anaunganisha kumbukumbu yako ya mnufaika na akaunti hii (kwa nambari yako ya simu) anapokuongeza."
+            : "Nothing to show yet. This page updates automatically once a family member names you in a verified succession record — make sure the owner links your beneficiary record to this account (by your phone number) when they add you."}
         </div>
       ) : (
         <div className="space-y-4">
@@ -118,14 +123,18 @@ export default function BeneficiaryDashboardPage() {
                 {c.status === "pending" ? (
                   <div className="flex gap-3">
                     <button onClick={() => respond(c.id, "accepted")} className="btn-secondary text-sm">
-                      Accept My Role
+                      {sw ? "Kubali Nafasi Yangu" : "Accept My Role"}
                     </button>
                     <button onClick={() => respond(c.id, "declined")} className="btn-danger text-sm">
-                      Decline
+                      {sw ? "Kataa" : "Decline"}
                     </button>
                   </div>
                 ) : (
-                  <p className="text-xs text-neutralDark">You {c.status} this role.</p>
+                  <p className="text-xs text-neutralDark">
+                    {sw
+                      ? `Uli${c.status === "accepted" ? "kubali" : "kataa"} nafasi hii.`
+                      : `You ${c.status} this role.`}
+                  </p>
                 )}
               </div>
             );

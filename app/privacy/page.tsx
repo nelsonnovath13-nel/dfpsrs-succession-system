@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { useLanguage, LanguageToggle } from "@/lib/i18n";
 
 const CONTENT = {
@@ -49,7 +50,12 @@ export default function PrivacyPage() {
             </div>
           ))}
         </div>
-        <Link href="/" className="inline-block mt-8 text-sm text-primary underline">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 mt-8 border border-primary text-primary font-medium text-sm px-4"
+          style={{ minHeight: 44 }}
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
           {lang === "en" ? "Back to home" : "Rudi mwanzo"}
         </Link>
       </div>

@@ -1,15 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { FileText, Award } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
+import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
+
+type SuccessionRecord = { id: string; title: string; status: string };
 
 export default function OwnerReportsPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [properties, setProperties] = useState<any[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<any[]>([]);
   const [allocations, setAllocations] = useState<any[]>([]);
   const [ownerName, setOwnerName] = useState("");
+  const [records, setRecords] = useState<SuccessionRecord[]>([]);
   const [report, setReport] = useState<"estate" | "property" | "beneficiary">("estate");
 
   useEffect(() => {
@@ -34,12 +43,13 @@ export default function OwnerReportsPage() {
         .eq("owner_id", user.id);
       setBeneficiaries(bens ?? []);
 
+      const { data: recs } = await supabase.from("dfp_succession_records").select("id, title, status").eq("owner_id", user.id).order("created_at", { ascending: false });
+      setRecords(recs ?? []);
+
       const { data: allocs } = await supabase
         .from("dfp_property_allocations")
         .select("id, share_percentage, dfp_properties(name), dfp_beneficiaries(full_name)")
-        .in("succession_record_id",
-          (await supabase.from("dfp_succession_records").select("id").eq("owner_id", user.id)).data?.map((r) => r.id) ?? []
-        );
+        .in("succession_record_id", (recs ?? []).map((r) => r.id));
       setAllocations((allocs as any) ?? []);
     })();
   }, [supabase]);
@@ -49,38 +59,80 @@ export default function OwnerReportsPage() {
   return (
     <DashboardShell role="owner">
       <div className="flex items-center justify-between mb-6 no-print">
-        <h1 className="text-xl font-semibold text-primary">Reports &amp; Certificates</h1>
-        <div className="flex gap-2">
-          <button onClick={() => setReport("estate")} className={`btn-outline text-xs ${report === "estate" ? "bg-neutralLight" : ""}`}>Estate Summary</button>
-          <button onClick={() => setReport("property")} className={`btn-outline text-xs ${report === "property" ? "bg-neutralLight" : ""}`}>Property Registry</button>
-          <button onClick={() => setReport("beneficiary")} className={`btn-outline text-xs ${report === "beneficiary" ? "bg-neutralLight" : ""}`}>Beneficiary Report</button>
-          <button onClick={() => window.print()} className="btn-primary text-xs">Print</button>
+        <h1 className="text-xl font-semibold text-primary">{sw ? "Taarifa na Vyeti" : "Reports & Certificates"}</h1>
+      </div>
+
+      {/* The full, official multi-section report (with signatures + QR certificate) lives on
+          each succession record -- this is the actual destination people mean by "the report",
+          not the simple summary table below, so it's surfaced first and prominently. */}
+      <div className="card mb-6 no-print">
+        <h2 className="font-semibold text-primary text-sm uppercase tracking-wide mb-3">{sw ? "Kumbukumbu za Urithi" : "Succession Records"}</h2>
+        {records.length === 0 ? (
+          <p className="text-sm text-inkSoft">{sw ? "Bado hujatengeneza kumbukumbu ya urithi." : "You haven't created a succession record yet."}</p>
+        ) : (
+          <div className="border border-gray-300 divide-y divide-gray-200">
+            {records.map((r) => (
+              <div key={r.id} className="flex items-center justify-between px-4 py-3 flex-wrap gap-2">
+                <div className="flex items-center gap-3">
+                  <p className="text-sm font-medium text-ink">{r.title}</p>
+                  <StatusBadge status={r.status} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/owner/succession-plans/${r.id}/report`}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary border border-primary px-3"
+                    style={{ minHeight: 32 }}
+                  >
+                    <FileText size={14} aria-hidden="true" /> {sw ? "Ripoti Kamili" : "Full Estate Report"}
+                  </Link>
+                  {r.status === "verified" && (
+                    <Link
+                      href={`/owner/succession-plans/${r.id}/certificate`}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary border border-secondary px-3"
+                      style={{ minHeight: 32 }}
+                    >
+                      <Award size={14} aria-hidden="true" /> {sw ? "Cheti" : "Certificate"}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between mb-3 no-print flex-wrap gap-2">
+        <h2 className="text-sm font-semibold text-inkSoft uppercase tracking-wide">{sw ? "Majedwali Mafupi ya Muhtasari" : "Quick Summary Tables"}</h2>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => setReport("estate")} className={`btn-outline text-xs ${report === "estate" ? "bg-neutralLight" : ""}`}>{sw ? "Muhtasari wa Mali" : "Estate Summary"}</button>
+          <button onClick={() => setReport("property")} className={`btn-outline text-xs ${report === "property" ? "bg-neutralLight" : ""}`}>{sw ? "Sajili ya Mali" : "Property Registry"}</button>
+          <button onClick={() => setReport("beneficiary")} className={`btn-outline text-xs ${report === "beneficiary" ? "bg-neutralLight" : ""}`}>{sw ? "Taarifa ya Wanufaika" : "Beneficiary Report"}</button>
+          <button onClick={() => window.print()} className="btn-primary text-xs">{sw ? "Chapisha" : "Print"}</button>
         </div>
       </div>
 
       <div className="card">
         <div className="text-center border-b border-gray-300 pb-4 mb-4">
-          <p className="text-xs text-neutralDark uppercase tracking-widest">United Republic of Tanzania</p>
+          <p className="text-xs text-neutralDark uppercase tracking-widest">{sw ? "Jamhuri ya Muungano wa Tanzania" : "United Republic of Tanzania"}</p>
           <p className="font-semibold text-primary">
-            {report === "estate" && "Estate Summary Report"}
-            {report === "property" && "Property Registry Report"}
-            {report === "beneficiary" && "Beneficiary Report"}
+            {report === "estate" && (sw ? "Muhtasari wa Mali" : "Estate Summary Report")}
+            {report === "property" && (sw ? "Taarifa ya Sajili ya Mali" : "Property Registry Report")}
+            {report === "beneficiary" && (sw ? "Taarifa ya Wanufaika" : "Beneficiary Report")}
           </p>
-          <p className="text-xs text-neutralDark">Prepared for: {ownerName} — Generated: {new Date().toLocaleDateString()}</p>
+          <p className="text-xs text-neutralDark">{sw ? "Imeandaliwa kwa" : "Prepared for"}: {ownerName} — {sw ? "Imetengenezwa" : "Generated"}: {new Date().toLocaleDateString()}</p>
         </div>
 
         {report === "estate" && (
           <div>
             <p className="text-sm mb-4">
-              Total registered properties: <strong>{properties.length}</strong> — Total estimated
-              value: <strong>TZS {totalValue.toLocaleString()}</strong> — Registered beneficiaries: <strong>{beneficiaries.length}</strong>
+              {sw ? "Jumla ya mali zilizosajiliwa" : "Total registered properties"}: <strong>{properties.length}</strong> — {sw ? "Thamani ya jumla inayokadiriwa" : "Total estimated value"}: <strong>TZS {totalValue.toLocaleString()}</strong> — {sw ? "Wanufaika waliosajiliwa" : "Registered beneficiaries"}: <strong>{beneficiaries.length}</strong>
             </p>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left border-b border-gray-300">
-                  <th className="py-2 pr-4">Property</th>
-                  <th className="py-2 pr-4">Beneficiary</th>
-                  <th className="py-2">Share</th>
+                  <th className="py-2 pr-4">{sw ? "Mali" : "Property"}</th>
+                  <th className="py-2 pr-4">{sw ? "Mnufaika" : "Beneficiary"}</th>
+                  <th className="py-2">{sw ? "Sehemu" : "Share"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -100,12 +152,12 @@ export default function OwnerReportsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left border-b border-gray-300">
-                <th className="py-2 pr-4">Property No.</th>
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Category</th>
-                <th className="py-2 pr-4">Ownership</th>
-                <th className="py-2 pr-4">Value (TZS)</th>
-                <th className="py-2">Status</th>
+                <th className="py-2 pr-4">{sw ? "Na. ya Mali" : "Property No."}</th>
+                <th className="py-2 pr-4">{sw ? "Jina" : "Name"}</th>
+                <th className="py-2 pr-4">{sw ? "Aina" : "Category"}</th>
+                <th className="py-2 pr-4">{sw ? "Umiliki" : "Ownership"}</th>
+                <th className="py-2 pr-4">{sw ? "Thamani (TZS)" : "Value (TZS)"}</th>
+                <th className="py-2">{sw ? "Hadhi" : "Status"}</th>
               </tr>
             </thead>
             <tbody>
@@ -127,9 +179,9 @@ export default function OwnerReportsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left border-b border-gray-300">
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Relationship</th>
-                <th className="py-2">Phone</th>
+                <th className="py-2 pr-4">{sw ? "Jina" : "Name"}</th>
+                <th className="py-2 pr-4">{sw ? "Uhusiano" : "Relationship"}</th>
+                <th className="py-2">{sw ? "Simu" : "Phone"}</th>
               </tr>
             </thead>
             <tbody>

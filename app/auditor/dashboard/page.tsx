@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { StatCard } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Log = {
   id: string;
@@ -15,6 +16,8 @@ type Log = {
 
 export default function AuditorDashboardPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [stats, setStats] = useState({ records: 0, verified: 0, rejected: 0, pending: 0 });
   const [logs, setLogs] = useState<Log[]>([]);
   const [tableFilter, setTableFilter] = useState("all");
@@ -45,21 +48,21 @@ export default function AuditorDashboardPage() {
 
   return (
     <DashboardShell role="auditor">
-      <h1 className="text-xl font-semibold text-primary mb-2">Audit &amp; Compliance</h1>
+      <h1 className="text-xl font-semibold text-primary mb-2">{sw ? "Ukaguzi na Utii" : "Audit & Compliance"}</h1>
       <p className="text-sm text-neutralDark mb-6">
-        Read-only view. Auditor accounts cannot modify records.
+        {sw ? "Muonekano wa kusoma tu. Akaunti za ukaguzi haziwezi kubadilisha kumbukumbu." : "Read-only view. Auditor accounts cannot modify records."}
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Succession Records" value={stats.records} />
-        <StatCard label="Verified" value={stats.verified} />
-        <StatCard label="Rejected" value={stats.rejected} />
-        <StatCard label="In Progress" value={stats.pending} />
+        <StatCard label={sw ? "Jumla ya Kumbukumbu za Urithi" : "Total Succession Records"} value={stats.records} />
+        <StatCard label={sw ? "Zilizothibitishwa" : "Verified"} value={stats.verified} />
+        <StatCard label={sw ? "Zilizokataliwa" : "Rejected"} value={stats.rejected} />
+        <StatCard label={sw ? "Zinazoendelea" : "In Progress"} value={stats.pending} />
       </div>
 
       <div className="mb-4">
         <select className="input-field max-w-xs" value={tableFilter} onChange={(e) => setTableFilter(e.target.value)}>
-          <option value="all">All record types</option>
+          <option value="all">{sw ? "Aina Zote za Kumbukumbu" : "All record types"}</option>
           {tables.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
@@ -68,21 +71,21 @@ export default function AuditorDashboardPage() {
 
       <div className="card overflow-x-auto">
         {loading ? (
-          <p className="text-sm text-neutralDark">Loading…</p>
+          <p className="text-sm text-neutralDark">{sw ? "Inapakia…" : "Loading…"}</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-neutralDark border-b border-gray-300">
-                <th className="py-2 pr-4">User</th>
-                <th className="py-2 pr-4">Action</th>
-                <th className="py-2 pr-4">Record Type</th>
-                <th className="py-2">Timestamp</th>
+                <th className="py-2 pr-4">{sw ? "Mtumiaji" : "User"}</th>
+                <th className="py-2 pr-4">{sw ? "Kitendo" : "Action"}</th>
+                <th className="py-2 pr-4">{sw ? "Aina ya Kumbukumbu" : "Record Type"}</th>
+                <th className="py-2">{sw ? "Muda" : "Timestamp"}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((l) => (
                 <tr key={l.id} className="border-b border-gray-200 last:border-0">
-                  <td className="py-2 pr-4 text-neutralDark">{l.dfp_profiles?.full_name ?? "System"}</td>
+                  <td className="py-2 pr-4 text-neutralDark">{l.dfp_profiles?.full_name ?? (sw ? "Mfumo" : "System")}</td>
                   <td className="py-2 pr-4 text-neutralDark">{l.action}</td>
                   <td className="py-2 pr-4 text-neutralDark">{l.reference_table}</td>
                   <td className="py-2 text-neutralDark text-xs">{new Date(l.created_at).toLocaleString()}</td>

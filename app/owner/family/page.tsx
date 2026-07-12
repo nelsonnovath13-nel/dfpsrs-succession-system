@@ -5,9 +5,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Users, User, ChevronDown, ChevronRight } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
+import { PageGuide } from "@/components/PageGuide";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/i18n";
 import { withTimeout } from "@/lib/withTimeout";
+
+const FAMILY_GUIDE = {
+  purpose: { en: "Record your family members and how they relate to you.", sw: "Andika wanafamilia wako na uhusiano wao na wewe." },
+  why: {
+    en: "Witnesses and leaders use this list to check that no close family member has been left out of your succession record.",
+    sw: "Mashahidi na viongozi hutumia orodha hii kuangalia kama hakuna mwanafamilia wa karibu aliyeachwa nje ya kumbukumbu yako ya urithi.",
+  },
+  example: { en: "Father, Mother, Spouse, Children.", sw: "Baba, Mama, Mwenza, Watoto." },
+  mistakes: { en: "Leaving out a child or spouse because they will not inherit — they should still be recorded here.", sw: "Kuacha mtoto au mwenza kwa sababu hatarithi — bado anapaswa kuandikwa hapa." },
+  nextStep: { en: "Next, go to Beneficiary Registry to choose who will inherit your property.", sw: "Ifuatayo, nenda Sajili ya Wanufaika kuchagua nani atarithi mali yako." },
+};
 
 type Member = {
   id: string;
@@ -151,6 +163,10 @@ function FamilyStructureForm() {
         setError(lang === "sw" ? "Kikao chako kimeisha. Tafadhali ingia tena." : "Your session has expired. Please sign in again.");
         return;
       }
+      if (!form.date_of_birth) {
+        setError(lang === "sw" ? "Tafadhali jaza tarehe ya kuzaliwa." : "Please enter the date of birth.");
+        return;
+      }
       const { error } = await withTimeout(
         supabase.from("dfp_family_members").insert({
           owner_id: user.id,
@@ -197,9 +213,12 @@ function FamilyStructureForm() {
     <DashboardShell role="owner">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-primary">Family Structure Registry</h1>
-        <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
-          {showForm ? "Cancel" : "+ Add Family Member"}
-        </button>
+        <div className="flex items-center gap-2">
+          <PageGuide content={FAMILY_GUIDE} />
+          <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
+            {showForm ? "Cancel" : "+ Add Family Member"}
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -232,7 +251,14 @@ function FamilyStructureForm() {
             </div>
             <div>
               <label className="label">Date of Birth</label>
-              <input type="date" className="input-field" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
+              <input
+                type="date"
+                required
+                max={new Date().toISOString().slice(0, 10)}
+                className="input-field"
+                value={form.date_of_birth}
+                onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
+              />
             </div>
           </div>
           <div>

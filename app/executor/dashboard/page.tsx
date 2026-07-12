@@ -5,6 +5,7 @@ import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Appointment = {
   id: string;
@@ -18,6 +19,8 @@ type DeathStatus = { owner_id: string; status: string };
 
 export default function ExecutorDashboardPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [deathStatuses, setDeathStatuses] = useState<DeathStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,18 +54,20 @@ export default function ExecutorDashboardPage() {
 
   return (
     <DashboardShell role="executor">
-      <h1 className="text-xl font-semibold text-primary mb-2">Executor Dashboard</h1>
+      <h1 className="text-xl font-semibold text-primary mb-2">{sw ? "Dashibodi ya Msimamizi wa Mirathi" : "Executor Dashboard"}</h1>
       <p className="text-sm text-neutralDark mb-6">
-        Estates where you have been appointed as executor, family representative, trusted
-        contact, or legal representative.
+        {sw
+          ? "Mali ambazo umeteuliwa kama msimamizi wa mirathi, mwakilishi wa familia, mtu wa kuaminika, au mwakilishi wa kisheria."
+          : "Estates where you have been appointed as executor, family representative, trusted contact, or legal representative."}
       </p>
 
       {loading ? (
-        <p className="text-sm text-neutralDark">Loading…</p>
+        <p className="text-sm text-neutralDark">{sw ? "Inapakia…" : "Loading…"}</p>
       ) : appointments.length === 0 ? (
         <div className="card text-center py-10 text-neutralDark">
-          No appointments yet. Ask the property owner to link your account by phone number on
-          their Executors & Representatives page.
+          {sw
+            ? "Bado hakuna uteuzi. Mwombe mmiliki wa mali kuunganisha akaunti yako kwa nambari ya simu kwenye ukurasa wake wa Wasimamizi na Wawakilishi."
+            : "No appointments yet. Ask the property owner to link your account by phone number on their Executors & Representatives page."}
         </div>
       ) : (
         <div className="space-y-4">
@@ -78,10 +83,10 @@ export default function ExecutorDashboardPage() {
                   {death ? (
                     <StatusBadge status={death.status} />
                   ) : (
-                    <span className="text-xs text-neutralDark">No death verification workflow started</span>
+                    <span className="text-xs text-neutralDark">{sw ? "Mchakato wa uhakiki wa kifo haujaanza" : "No death verification workflow started"}</span>
                   )}
                   <Link href="/executor/estate" className="text-sm text-primary font-medium underline">
-                    View estate
+                    {sw ? "Angalia mali" : "View estate"}
                   </Link>
                 </div>
               </div>

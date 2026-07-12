@@ -6,6 +6,7 @@ import DashboardShell from "@/components/DashboardShell";
 import { PageNav } from "@/components/PageNav";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Note = {
   id: string;
@@ -23,10 +24,19 @@ type Evidence = {
 };
 
 const EVIDENCE_TYPES = ["document", "image", "audio", "video", "witness_statement"];
+const EVIDENCE_TYPE_LABELS_SW: Record<string, string> = {
+  document: "hati",
+  image: "picha",
+  audio: "sauti",
+  video: "video",
+  witness_statement: "taarifa ya shahidi",
+};
 
 export default function DisputeDetailPage() {
   const params = useParams<{ id: string }>();
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [dispute, setDispute] = useState<any>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
@@ -103,18 +113,20 @@ export default function DisputeDetailPage() {
   }
 
   async function viewEvidence(path: string) {
+    const newTab = window.open("", "_blank");
     const { data, error } = await supabase.storage.from("dfp-documents").createSignedUrl(path, 60);
     if (error || !data) {
-      alert("Could not open file.");
+      newTab?.close();
+      alert(sw ? "Imeshindwa kufungua faili." : "Could not open file.");
       return;
     }
-    window.open(data.signedUrl, "_blank");
+    if (newTab) newTab.location.href = data.signedUrl;
   }
 
   if (loading || !dispute) {
     return (
       <DashboardShell role="owner">
-        <p className="text-sm text-neutralDark">Loading…</p>
+        <p className="text-sm text-neutralDark">{sw ? "Inapakia…" : "Loading…"}</p>
       </DashboardShell>
     );
   }
@@ -132,9 +144,9 @@ export default function DisputeDetailPage() {
       </div>
 
       <div className="card mb-6">
-        <h2 className="font-semibold text-primary mb-4 text-sm uppercase tracking-wide">Evidence</h2>
+        <h2 className="font-semibold text-primary mb-4 text-sm uppercase tracking-wide">{sw ? "Ushahidi" : "Evidence"}</h2>
         {evidence.length === 0 ? (
-          <p className="text-sm text-neutralDark mb-3">No evidence uploaded yet.</p>
+          <p className="text-sm text-neutralDark mb-3">{sw ? "Bado hakuna ushahidi uliopakiwa." : "No evidence uploaded yet."}</p>
         ) : (
           <ul className="space-y-1 mb-3">
             {evidence.map((ev) => (
@@ -142,7 +154,7 @@ export default function DisputeDetailPage() {
                 <button onClick={() => viewEvidence(ev.file_path)} className="text-primary underline text-left">
                   {ev.file_name ?? ev.evidence_type}
                 </button>
-                <span className="text-xs text-neutralDark capitalize">{ev.evidence_type}</span>
+                <span className="text-xs text-neutralDark capitalize">{sw ? EVIDENCE_TYPE_LABELS_SW[ev.evidence_type] ?? ev.evidence_type : ev.evidence_type}</span>
               </li>
             ))}
           </ul>
@@ -150,7 +162,7 @@ export default function DisputeDetailPage() {
         <div className="flex items-center gap-2">
           <select className="input-field text-xs py-1 w-40" value={evidenceType} onChange={(e) => setEvidenceType(e.target.value)}>
             {EVIDENCE_TYPES.map((t) => (
-              <option key={t} value={t}>{t.replace("_", " ")}</option>
+              <option key={t} value={t}>{sw ? EVIDENCE_TYPE_LABELS_SW[t] : t.replace("_", " ")}</option>
             ))}
           </select>
           <input
@@ -165,9 +177,9 @@ export default function DisputeDetailPage() {
       </div>
 
       <div className="card">
-        <h2 className="font-semibold text-primary mb-4 text-sm uppercase tracking-wide">Notes & Mediation</h2>
+        <h2 className="font-semibold text-primary mb-4 text-sm uppercase tracking-wide">{sw ? "Maelezo na Upatanishi" : "Notes & Mediation"}</h2>
         {notes.length === 0 ? (
-          <p className="text-sm text-neutralDark mb-4">No notes yet.</p>
+          <p className="text-sm text-neutralDark mb-4">{sw ? "Bado hakuna maelezo." : "No notes yet."}</p>
         ) : (
           <ul className="space-y-3 mb-4">
             {notes.map((n) => (
@@ -179,8 +191,8 @@ export default function DisputeDetailPage() {
           </ul>
         )}
         <form onSubmit={handleAddComment} className="flex gap-2">
-          <input className="input-field" placeholder="Add a comment…" value={comment} onChange={(e) => setComment(e.target.value)} />
-          <button type="submit" className="btn-primary text-sm">Post</button>
+          <input className="input-field" placeholder={sw ? "Ongeza maoni…" : "Add a comment…"} value={comment} onChange={(e) => setComment(e.target.value)} />
+          <button type="submit" className="btn-primary text-sm">{sw ? "Tuma" : "Post"}</button>
         </form>
       </div>
     </DashboardShell>

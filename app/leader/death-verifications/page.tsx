@@ -5,6 +5,7 @@ import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Row = {
   id: string;
@@ -15,6 +16,8 @@ type Row = {
 
 export default function LeaderDeathVerificationsPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [rows, setRows] = useState<Row[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -49,27 +52,27 @@ export default function LeaderDeathVerificationsPage() {
 
   return (
     <DashboardShell role="leader">
-      <h1 className="text-xl font-semibold text-primary mb-6">Death Verification</h1>
+      <h1 className="text-xl font-semibold text-primary mb-6">{sw ? "Uhakiki wa Kifo" : "Death Verification"}</h1>
 
-      <h2 className="text-sm font-semibold text-neutralDark uppercase mb-3">Awaiting Your Confirmation</h2>
+      <h2 className="text-sm font-semibold text-neutralDark uppercase mb-3">{sw ? "Inasubiri Uthibitisho Wako" : "Awaiting Your Confirmation"}</h2>
       {loading ? (
-        <p className="text-sm text-neutralDark">Loading…</p>
+        <p className="text-sm text-neutralDark">{sw ? "Inapakia…" : "Loading…"}</p>
       ) : pending.length === 0 ? (
-        <div className="card text-center py-8 text-neutralDark mb-8">No pending death reports.</div>
+        <div className="card text-center py-8 text-neutralDark mb-8">{sw ? "Hakuna ripoti za kifo zinazosubiri." : "No pending death reports."}</div>
       ) : (
         <div className="space-y-3 mb-8">
           {pending.map((r) => (
             <Link key={r.id} href={`/leader/death-verifications/${r.id}`} className="card flex items-center justify-between hover:bg-neutralLight transition">
               <p className="font-medium text-neutralDark">{names[r.dfp_death_verifications?.owner_id ?? ""] ?? "—"}</p>
-              <span className="text-primary text-sm font-medium">Review</span>
+              <span className="text-primary text-sm font-medium">{sw ? "Hakiki" : "Review"}</span>
             </Link>
           ))}
         </div>
       )}
 
-      <h2 className="text-sm font-semibold text-neutralDark uppercase mb-3">History</h2>
+      <h2 className="text-sm font-semibold text-neutralDark uppercase mb-3">{sw ? "Historia" : "History"}</h2>
       {history.length === 0 ? (
-        <div className="card text-center py-8 text-neutralDark">No past decisions yet.</div>
+        <div className="card text-center py-8 text-neutralDark">{sw ? "Bado hakuna maamuzi ya nyuma." : "No past decisions yet."}</div>
       ) : (
         <div className="space-y-3">
           {history.map((r) => (

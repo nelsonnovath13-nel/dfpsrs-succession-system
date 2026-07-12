@@ -4,21 +4,24 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage, LanguageToggle } from "@/lib/i18n";
 
 const ROLES = [
-  { value: "owner", label: "Property Owner", desc: "Register and manage your family's property and succession plan." },
-  { value: "beneficiary", label: "Beneficiary", desc: "Confirm your role once a family member names you in a verified succession record." },
-  { value: "executor", label: "Estate Executor", desc: "Track an estate's succession progress once a property owner appoints and links you." },
-  { value: "witness", label: "Family Witness", desc: "Review and confirm succession records you're asked to witness." },
-  { value: "leader", label: "Local Government Leader", desc: "Give leader-level verification on succession records in your area." },
-  { value: "legal", label: "Legal Officer", desc: "Conduct legal review of succession records referred for legal verification." },
-  { value: "admin", label: "System Administrator", desc: "Oversee users and system-wide administration." },
-  { value: "auditor", label: "System Auditor", desc: "Read-only access to audit logs and compliance records." },
+  { value: "owner", en: "Property Owner", sw: "Mmiliki wa Mali", desc_en: "Register and manage your family's property and succession plan.", desc_sw: "Sajili na simamia mali ya familia yako na mpango wa urithi." },
+  { value: "beneficiary", en: "Beneficiary", sw: "Mnufaika", desc_en: "Confirm your role once a family member names you in a verified succession record.", desc_sw: "Thibitisha jukumu lako mara mwanafamilia atakapokutaja kwenye kumbukumbu ya urithi iliyothibitishwa." },
+  { value: "executor", en: "Estate Executor", sw: "Msimamizi wa Mirathi", desc_en: "Track an estate's succession progress once a property owner appoints and links you.", desc_sw: "Fuatilia maendeleo ya urithi mara mmiliki wa mali atakapokuteua na kukuunganisha." },
+  { value: "witness", en: "Family Witness", sw: "Shahidi wa Familia", desc_en: "Review and confirm succession records you're asked to witness.", desc_sw: "Pitia na thibitisha kumbukumbu za urithi ulizoombwa kushuhudia." },
+  { value: "leader", en: "Local Government Leader", sw: "Kiongozi wa Serikali za Mitaa", desc_en: "Give leader-level verification on succession records in your area.", desc_sw: "Toa uthibitisho wa kiongozi kwenye kumbukumbu za urithi katika eneo lako." },
+  { value: "legal", en: "Legal Officer", sw: "Afisa Sheria", desc_en: "Conduct legal review of succession records referred for legal verification.", desc_sw: "Fanya mapitio ya kisheria ya kumbukumbu za urithi zilizopelekwa kwa uthibitisho wa kisheria." },
+  { value: "admin", en: "System Administrator", sw: "Msimamizi wa Mfumo", desc_en: "Oversee users and system-wide administration.", desc_sw: "Simamia watumiaji na uendeshaji wa mfumo mzima." },
+  { value: "auditor", en: "System Auditor", sw: "Mkaguzi wa Mfumo", desc_en: "Read-only access to audit logs and compliance records.", desc_sw: "Ufikiaji wa kusoma tu wa kumbukumbu za ukaguzi na uzingatiaji." },
 ];
 
 export default function RegisterPage() {
   const supabase = createClient();
   const router = useRouter();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -32,7 +35,7 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -40,33 +43,44 @@ export default function RegisterPage() {
       },
     });
 
+    setLoading(false);
+
+    const duplicateMsg = sw
+      ? "Barua pepe hii tayari imesajiliwa. Tafadhali ingia badala yake, au tumia barua pepe nyingine."
+      : "This email is already registered. Please sign in instead, or use a different email.";
+
     if (signUpError) {
-      setLoading(false);
-      setError(signUpError.message);
+      if (/already registered|already exists|user_already_exists/i.test(signUpError.message)) {
+        setError(duplicateMsg);
+      } else {
+        setError(signUpError.message);
+      }
       return;
     }
 
-    // The account is auto-confirmed server-side (see dfp_auto_confirm_email trigger),
-    // so we can sign the user straight in instead of making them wait on an email link.
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (signInError) {
-      setError("Account created. Please sign in.");
-      router.push("/login");
+    // Supabase does not always return an error for a duplicate email (to avoid leaking which
+    // emails are registered) — instead it returns a user with an empty `identities` array.
+    // That is the documented way to detect "this email is already taken" in that case.
+    if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
+      setError(duplicateMsg);
       return;
     }
-    router.refresh();
-    router.push("/");
+
+    // Do not sign the user straight in after registering — send them back to the login
+    // page so they explicitly authenticate with the credentials they just created,
+    // rather than being taken straight into the app.
+    router.push("/login?registered=1");
   }
 
   return (
     <main className="min-h-screen flex items-center justify-center px-6 py-10 bg-surface">
       <div className="w-full max-w-lg">
+        <div className="flex justify-end mb-3">
+          <LanguageToggle />
+        </div>
         <div className="text-center mb-6">
-          <div className="mx-auto mb-3 h-12 w-12 border-2 bg-primary flex items-center justify-center text-white font-bold">
-            URT
-          </div>
-          <h1 className="text-xl font-semibold text-neutralDark">Create your account</h1>
+          <img src="/nembo.png" alt="URT" className="mx-auto mb-3 h-12 w-12 object-contain" />
+          <h1 className="text-xl font-semibold text-neutralDark">{sw ? "Fungua Akaunti Yako" : "Create your account"}</h1>
         </div>
         <form onSubmit={handleSubmit} className="card space-y-4">
           {error && (
@@ -76,12 +90,12 @@ export default function RegisterPage() {
           )}
 
           <div>
-            <label className="label">I am registering as</label>
+            <label className="label">{sw ? "Ninajisajili kama" : "I am registering as"}</label>
             <div className="grid grid-cols-1 gap-2">
               {ROLES.map((r) => (
                 <label
                   key={r.value}
-                  className={`flex items-start gap-3 border border p-3 cursor-pointer transition ${
+                  className={`flex items-start gap-3 border p-3 cursor-pointer transition ${
                     role === r.value ? "border-primary bg-primary/5" : "border-gray-200"
                   }`}
                 >
@@ -94,44 +108,50 @@ export default function RegisterPage() {
                     className="mt-1"
                   />
                   <span>
-                    <span className="block text-sm font-medium text-neutralDark">{r.label}</span>
-                    <span className="block text-xs text-neutralDark">{r.desc}</span>
+                    <span className="block text-sm font-medium text-neutralDark">{sw ? r.sw : r.en}</span>
+                    <span className="block text-xs text-neutralDark">{sw ? r.desc_sw : r.desc_en}</span>
                   </span>
                 </label>
               ))}
             </div>
             <p className="text-xs text-neutralDark mt-1">
-              Demo note: open role selection is for evaluation purposes. In production, Witness,
-              Leader, and Admin accounts should be created by invitation only.
+              {sw
+                ? "Kumbuka: uchaguzi huru wa jukumu ni kwa ajili ya tathmini. Kwenye uzalishaji, akaunti za Shahidi, Kiongozi, na Msimamizi zinapaswa kuundwa kwa mwaliko tu."
+                : "Demo note: open role selection is for evaluation purposes. In production, Witness, Leader, and Admin accounts should be created by invitation only."}
+            </p>
+            <p className="text-xs text-inkSoft mt-2 bg-neutralLight border border-gray-200 px-3 py-2">
+              {sw
+                ? "Unamuongeza mtoto au mwanafamilia asiye na barua pepe? Huhitaji kumfungulia akaunti hapa — Mmiliki wa Mali anamuongeza moja kwa moja kutoka Sajili ya Muundo wa Familia ndani ya programu. Fomu hii ni kwa ajili ya watu watakaoingia (login) wenyewe tu."
+                : "Adding a child or family member who does not have an email address? You do not need to create an account for them here — the Property Owner adds them directly from the Family Structure Registry inside the app. This form is only for people who will sign in themselves."}
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Full Name</label>
+              <label className="label">{sw ? "Jina Kamili" : "Full Name"}</label>
               <input required className="input-field" value={fullName} onChange={(e) => setFullName(e.target.value)} />
             </div>
             <div>
-              <label className="label">Phone Number</label>
+              <label className="label">{sw ? "Namba ya Simu" : "Phone Number"}</label>
               <input required className="input-field" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+255…" />
             </div>
           </div>
           <div>
-            <label className="label">Email</label>
+            <label className="label">{sw ? "Barua Pepe" : "Email"}</label>
             <input type="email" required className="input-field" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
-            <label className="label">Password</label>
+            <label className="label">{sw ? "Neno la Siri" : "Password"}</label>
             <input type="password" required minLength={6} className="input-field" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "Creating account…" : "Create Account"}
+            {loading ? (sw ? "Inafungua akaunti…" : "Creating account…") : sw ? "Fungua Akaunti" : "Create Account"}
           </button>
         </form>
         <p className="text-center text-sm text-neutralDark mt-4">
-          Already have an account?{" "}
+          {sw ? "Una akaunti tayari?" : "Already have an account?"}{" "}
           <Link href="/login" className="text-primary font-medium">
-            Sign in
+            {sw ? "Ingia" : "Sign in"}
           </Link>
         </p>
       </div>

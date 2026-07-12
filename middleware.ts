@@ -13,7 +13,7 @@ const ROLE_PREFIX: Record<string, string> = {
   executor: "/executor",
 };
 
-const PUBLIC_PATHS = ["/login", "/register", "/", "/verify", "/help", "/terms", "/privacy"];
+const PUBLIC_PATHS = ["/login", "/register", "/", "/verify", "/help", "/terms", "/privacy", "/handbook"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } });
@@ -65,7 +65,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const role = profile?.role ?? "owner";
+  // A missing profile row must never silently grant owner-level access — sign the
+  // session out and send them back to login rather than guessing a role.
+  if (!profile?.role) {
+    await supabase.auth.signOut();
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("no_profile", "1");
+    return NextResponse.redirect(url);
+  }
+
+  const role = profile.role;
   const homePrefix = ROLE_PREFIX[role] ?? "/owner";
 
   if (path === "/" || path === "/login" || path === "/register") {

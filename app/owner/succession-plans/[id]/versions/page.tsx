@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import { PageNav } from "@/components/PageNav";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Version = {
   id: string;
@@ -19,6 +20,8 @@ type Version = {
 export default function VersionHistoryPage() {
   const params = useParams<{ id: string }>();
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [record, setRecord] = useState<any>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
@@ -58,7 +61,14 @@ export default function VersionHistoryPage() {
   }, []);
 
   async function handleRestore(versionNumber: number) {
-    if (!confirm(`Restore version ${versionNumber}? This creates a new version with that content.`)) return;
+    if (
+      !confirm(
+        sw
+          ? `Rejesha toleo ${versionNumber}? Hii itaunda toleo jipya lenye maudhui hayo.`
+          : `Restore version ${versionNumber}? This creates a new version with that content.`
+      )
+    )
+      return;
     setError(null);
     setRestoring(versionNumber);
     const { error } = await supabase.rpc("dfp_restore_version", {
@@ -76,7 +86,7 @@ export default function VersionHistoryPage() {
   if (loading || !record) {
     return (
       <DashboardShell role="owner">
-        <p className="text-sm text-neutralDark">Loading…</p>
+        <p className="text-sm text-neutralDark">{sw ? "Inapakia…" : "Loading…"}</p>
       </DashboardShell>
     );
   }
@@ -84,10 +94,14 @@ export default function VersionHistoryPage() {
   return (
     <DashboardShell role="owner">
       <PageNav exitHref={`/owner/succession-plans/${params.id}`} />
-      <h1 className="text-xl font-semibold text-primary mb-2">Version History — {record.title}</h1>
+      <h1 className="text-xl font-semibold text-primary mb-2">{sw ? "Historia ya Matoleo" : "Version History"} — {record.title}</h1>
       <p className="text-sm text-neutralDark mb-6">
         {record.is_locked
-          ? "This record is locked because it has been fully verified. Restoring an earlier version requires an administrator to unlock it first."
+          ? sw
+            ? "Kumbukumbu hii imefungwa kwa sababu imethibitishwa kikamilifu. Kurejesha toleo la awali kunahitaji msimamizi kuifungua kwanza."
+            : "This record is locked because it has been fully verified. Restoring an earlier version requires an administrator to unlock it first."
+          : sw
+          ? "Kila hifadhi huunda toleo jipya. Unaweza kurejesha toleo la awali wakati wowote kumbukumbu ikiwa haijafungwa."
           : "Every save creates a new version. You can restore an earlier version at any time while the record is unlocked."}
       </p>
 
@@ -96,7 +110,7 @@ export default function VersionHistoryPage() {
       )}
 
       {versions.length === 0 ? (
-        <div className="card text-center py-10 text-neutralDark">No version history yet.</div>
+        <div className="card text-center py-10 text-neutralDark">{sw ? "Bado hakuna historia ya matoleo." : "No version history yet."}</div>
       ) : (
         <div className="space-y-3">
           {versions.map((v) => (
@@ -104,13 +118,13 @@ export default function VersionHistoryPage() {
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="font-medium text-neutralDark">
-                    Version {v.version_number}
+                    {sw ? "Toleo" : "Version"} {v.version_number}
                     {v.version_number === record.current_version && (
-                      <span className="badge bg-white text-secondary border-secondary ml-2">Current</span>
+                      <span className="badge bg-white text-secondary border-secondary ml-2">{sw ? "Sasa" : "Current"}</span>
                     )}
                   </p>
                   <p className="text-xs text-neutralDark capitalize">
-                    {v.action} by {names[v.changed_by ?? ""] ?? "system"} · {new Date(v.created_at).toLocaleString()}
+                    {v.action} {sw ? "na" : "by"} {names[v.changed_by ?? ""] ?? (sw ? "mfumo" : "system")} · {new Date(v.created_at).toLocaleString()}
                   </p>
                 </div>
                 {v.version_number !== record.current_version && !record.is_locked && (
@@ -119,7 +133,7 @@ export default function VersionHistoryPage() {
                     onClick={() => handleRestore(v.version_number)}
                     className="btn-outline text-xs"
                   >
-                    {restoring === v.version_number ? "Restoring…" : "Restore"}
+                    {restoring === v.version_number ? (sw ? "Inarejesha…" : "Restoring…") : (sw ? "Rejesha" : "Restore")}
                   </button>
                 )}
               </div>

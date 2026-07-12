@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Log = {
   id: string;
@@ -14,6 +15,8 @@ type Log = {
 
 export default function AuditLogsPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [logs, setLogs] = useState<Log[]>([]);
   const [tableFilter, setTableFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -35,11 +38,11 @@ export default function AuditLogsPage() {
 
   return (
     <DashboardShell role="admin">
-      <h1 className="text-xl font-semibold text-primary mb-6">Audit &amp; Compliance</h1>
+      <h1 className="text-xl font-semibold text-primary mb-6">{sw ? "Ukaguzi na Utii" : "Audit & Compliance"}</h1>
 
       <div className="mb-4">
         <select className="input-field max-w-xs" value={tableFilter} onChange={(e) => setTableFilter(e.target.value)}>
-          <option value="all">All tables</option>
+          <option value="all">{sw ? "Majedwali Yote" : "All tables"}</option>
           {tables.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
@@ -48,21 +51,21 @@ export default function AuditLogsPage() {
 
       <div className="card overflow-x-auto">
         {loading ? (
-          <p className="text-sm text-neutralDark">Loading…</p>
+          <p className="text-sm text-neutralDark">{sw ? "Inapakia…" : "Loading…"}</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-neutralDark border-b border-gray-300">
-                <th className="py-2 pr-4">User</th>
-                <th className="py-2 pr-4">Action</th>
-                <th className="py-2 pr-4">Table</th>
-                <th className="py-2">When</th>
+                <th className="py-2 pr-4">{sw ? "Mtumiaji" : "User"}</th>
+                <th className="py-2 pr-4">{sw ? "Kitendo" : "Action"}</th>
+                <th className="py-2 pr-4">{sw ? "Jedwali" : "Table"}</th>
+                <th className="py-2">{sw ? "Wakati" : "When"}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((l) => (
                 <tr key={l.id} className="border-b border-gray-200 last:border-0">
-                  <td className="py-2 pr-4 text-neutralDark">{l.dfp_profiles?.full_name ?? "System"}</td>
+                  <td className="py-2 pr-4 text-neutralDark">{l.dfp_profiles?.full_name ?? (sw ? "Mfumo" : "System")}</td>
                   <td className="py-2 pr-4 text-neutralDark">{l.action}</td>
                   <td className="py-2 pr-4 text-neutralDark">{l.reference_table}</td>
                   <td className="py-2 text-neutralDark text-xs">{new Date(l.created_at).toLocaleString()}</td>

@@ -22,6 +22,7 @@ type Dispute = {
 export default function DisputesPage() {
   const supabase = createClient();
   const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [list, setList] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,24 +44,24 @@ export default function DisputesPage() {
   return (
     <DashboardShell role="owner">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-primary">Dispute Management</h1>
-        <Link href="/owner/disputes/new" className="btn-primary text-sm">Open Dispute</Link>
+        <h1 className="text-xl font-semibold text-primary">{sw ? "Usimamizi wa Migogoro" : "Dispute Management"}</h1>
+        <Link href="/owner/disputes/new" className="btn-primary text-sm">{sw ? "Fungua Mgogoro" : "Open Dispute"}</Link>
       </div>
 
       {loading ? (
-        <p className="text-sm text-neutralDark">Loading…</p>
+        <p className="text-sm text-neutralDark">{sw ? "Inapakia…" : "Loading…"}</p>
       ) : list.length === 0 ? (
         <EmptyState
           icon={AlertTriangle}
-          title={lang === "sw" ? "Hakuna mgogoro uliopo." : "No disputes on record."}
+          title={sw ? "Hakuna mgogoro uliopo." : "No disputes on record."}
           description={
-            lang === "sw"
+            sw
               ? "Mgogoro ni kutoelewana kuhusu kumbukumbu ya urithi — kwa mfano mpaka wa ardhi, umiliki, au mgao wa mali — kunakohitaji kutatuliwa."
               : "A dispute is a disagreement about a succession record — for example a boundary, ownership, or allocation issue — that needs to be resolved."
           }
-          action={{ label: lang === "sw" ? "Fungua Mgogoro" : "Open a Dispute", href: "/owner/disputes/new" }}
+          action={{ label: sw ? "Fungua Mgogoro" : "Open a Dispute", href: "/owner/disputes/new" }}
           helpHref="/help"
-          helpLabel={lang === "sw" ? "Nahitaji msaada zaidi" : "I need more help"}
+          helpLabel={sw ? "Nahitaji msaada zaidi" : "I need more help"}
         />
       ) : (
         <div className="space-y-3">

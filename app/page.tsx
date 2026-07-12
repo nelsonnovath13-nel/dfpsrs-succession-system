@@ -11,9 +11,7 @@ export default function HomePage() {
       <header className="official-header">
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 border-2 border-primary flex items-center justify-center text-primary font-bold text-sm">
-              URT
-            </div>
+            <img src="/nembo.png" alt="URT" className="h-10 w-10 object-contain" />
             <p className="text-sm font-semibold text-primary">{tr("system_name_short")}</p>
           </div>
           <LanguageToggle />

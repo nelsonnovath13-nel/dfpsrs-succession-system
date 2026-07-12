@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, FileCheck, Lock } from "lucide-react";
+import { BookOpen, FileCheck, Lock, LibraryBig } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 export function FooterLinks({ compact = false }: { compact?: boolean }) {
   const { t: tr } = useLanguage();
   const items = [
     { href: "/help", label: tr("help_center"), icon: BookOpen },
+    { href: "/handbook", label: tr("handbook"), icon: LibraryBig },
     { href: "/terms", label: tr("terms"), icon: FileCheck },
     { href: "/privacy", label: tr("privacy"), icon: Lock },
   ];

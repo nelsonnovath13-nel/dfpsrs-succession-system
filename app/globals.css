@@ -111,5 +111,7 @@ body {
 
 @media print {
   .no-print { display: none !important; }
+  .print-page { page-break-after: always; }
+  .print-page:last-child { page-break-after: auto; }
 }
 

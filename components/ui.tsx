@@ -86,6 +86,7 @@ export function StatusBadge({ status }: { status: string }) {
 
 const STEPS = [
   { key: "draft", labelKey: "status_draft" },
+  { key: "report_generated", labelKey: "status_report_generated" },
   { key: "submitted", labelKey: "status_submitted" },
   { key: "witness_review", labelKey: "status_witness_review" },
   { key: "local_leader_review", labelKey: "status_local_leader_review" },
@@ -93,7 +94,10 @@ const STEPS = [
   { key: "verified", labelKey: "status_verified" },
 ];
 
-export function VerificationTimeline({ status }: { status: string }) {
+// The "report_generated" step is virtual -- it is not a real dfp_succession_records.status
+// value (report generation happens while status is still "draft"), so its position must be
+// derived separately from the report_generated_at flag rather than matched by status string.
+export function VerificationTimeline({ status, reportGenerated }: { status: string; reportGenerated?: boolean }) {
   const { t: tr } = useLanguage();
   if (status === "rejected") {
     return (
@@ -104,7 +108,8 @@ export function VerificationTimeline({ status }: { status: string }) {
   }
   // legal_review only applies to records with a legal officer assigned; when absent,
   // the record skips straight from local_leader_review to verified.
-  const currentIndex = STEPS.findIndex((s) => s.key === status);
+  const realIndex = STEPS.findIndex((s) => s.key === status);
+  const currentIndex = status === "draft" && reportGenerated ? 1 : realIndex < 0 ? 0 : realIndex;
   return (
     <div className="flex items-center w-full">
       {STEPS.map((step, i) => {

@@ -5,12 +5,22 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import { PageNav } from "@/components/PageNav";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 const CATEGORIES = ["boundary", "ownership", "allocation", "fraud", "other"];
+const CATEGORY_LABELS_SW: Record<string, string> = {
+  boundary: "Mpaka",
+  ownership: "Umiliki",
+  allocation: "Mgao",
+  fraud: "Udanganyifu",
+  other: "Nyingine",
+};
 
 export default function NewDisputePage() {
   const supabase = createClient();
   const router = useRouter();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [records, setRecords] = useState<{ id: string; title: string }[]>([]);
   const [form, setForm] = useState({ succession_record_id: "", category: "ownership", description: "" });
   const [error, setError] = useState<string | null>(null);
@@ -60,35 +70,35 @@ export default function NewDisputePage() {
   return (
     <DashboardShell role="owner">
       <PageNav exitHref="/owner/disputes" />
-      <h1 className="text-xl font-semibold text-primary mb-6">Open a Dispute</h1>
+      <h1 className="text-xl font-semibold text-primary mb-6">{sw ? "Fungua Mgogoro" : "Open a Dispute"}</h1>
       <form onSubmit={handleSubmit} className="card max-w-xl space-y-4">
         {error && (
           <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{error}</div>
         )}
         <div>
-          <label className="label">Succession Record</label>
+          <label className="label">{sw ? "Kumbukumbu ya Urithi" : "Succession Record"}</label>
           <select
             required
             className="input-field"
             value={form.succession_record_id}
             onChange={(e) => setForm({ ...form, succession_record_id: e.target.value })}
           >
-            <option value="">Select…</option>
+            <option value="">{sw ? "Chagua…" : "Select…"}</option>
             {records.map((r) => (
               <option key={r.id} value={r.id}>{r.title}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="label">Category</label>
+          <label className="label">{sw ? "Aina" : "Category"}</label>
           <select className="input-field" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
             {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>{sw ? CATEGORY_LABELS_SW[c] : c}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="label">Description</label>
+          <label className="label">{sw ? "Maelezo" : "Description"}</label>
           <textarea
             required
             className="input-field"
@@ -98,7 +108,7 @@ export default function NewDisputePage() {
           />
         </div>
         <button disabled={loading} type="submit" className="btn-primary">
-          {loading ? "Submitting…" : "Open Dispute"}
+          {loading ? (sw ? "Inawasilisha…" : "Submitting…") : (sw ? "Fungua Mgogoro" : "Open Dispute")}
         </button>
       </form>
     </DashboardShell>

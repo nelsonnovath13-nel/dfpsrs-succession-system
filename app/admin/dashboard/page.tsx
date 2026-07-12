@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { StatCard } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 export default function AdminDashboardPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [stats, setStats] = useState({
     users: 0,
     properties: 0,
@@ -55,21 +58,21 @@ export default function AdminDashboardPage() {
 
   return (
     <DashboardShell role="admin">
-      <h1 className="text-xl font-semibold text-primary mb-6">System Overview</h1>
+      <h1 className="text-xl font-semibold text-primary mb-6">{sw ? "Muhtasari wa Mfumo" : "System Overview"}</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <StatCard label="Total Users" value={stats.users} />
-        <StatCard label="Total Properties" value={stats.properties} />
-        <StatCard label="Succession Records" value={stats.records} />
-        <StatCard label="Pending Verifications" value={stats.pending} />
-        <StatCard label="Verified" value={stats.verified} />
-        <StatCard label="Rejected" value={stats.rejected} />
+        <StatCard label={sw ? "Jumla ya Watumiaji" : "Total Users"} value={stats.users} />
+        <StatCard label={sw ? "Jumla ya Mali" : "Total Properties"} value={stats.properties} />
+        <StatCard label={sw ? "Kumbukumbu za Urithi" : "Succession Records"} value={stats.records} />
+        <StatCard label={sw ? "Uhakiki Unaosubiri" : "Pending Verifications"} value={stats.pending} />
+        <StatCard label={sw ? "Zilizothibitishwa" : "Verified"} value={stats.verified} />
+        <StatCard label={sw ? "Zilizokataliwa" : "Rejected"} value={stats.rejected} />
       </div>
 
       <div className="card">
-        <h2 className="font-semibold text-primary mb-4 text-sm uppercase tracking-wide">System-Wide Recent Activity</h2>
+        <h2 className="font-semibold text-primary mb-4 text-sm uppercase tracking-wide">{sw ? "Shughuli za Hivi Karibuni Mfumoni Kote" : "System-Wide Recent Activity"}</h2>
         {activity.length === 0 ? (
-          <p className="text-sm text-neutralDark">No activity recorded yet.</p>
+          <p className="text-sm text-neutralDark">{sw ? "Bado hakuna shughuli iliyorekodiwa." : "No activity recorded yet."}</p>
         ) : (
           <ul className="space-y-2">
             {activity.map((a, i) => (

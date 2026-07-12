@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 export default function AdminReportsPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [records, setRecords] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
 
@@ -33,18 +36,18 @@ export default function AdminReportsPage() {
   return (
     <DashboardShell role="admin">
       <div className="flex items-center justify-between mb-6 no-print">
-        <h1 className="text-xl font-semibold text-primary">Compliance Report</h1>
-        <button onClick={() => window.print()} className="btn-primary text-xs">Print</button>
+        <h1 className="text-xl font-semibold text-primary">{sw ? "Ripoti ya Utii" : "Compliance Report"}</h1>
+        <button onClick={() => window.print()} className="btn-primary text-xs">{sw ? "Chapisha" : "Print"}</button>
       </div>
 
       <div className="card">
         <div className="text-center border-b border-gray-300 pb-4 mb-4">
-          <p className="text-xs text-neutralDark uppercase tracking-widest">United Republic of Tanzania</p>
-          <p className="font-semibold text-primary">System-Wide Compliance &amp; Audit Report</p>
-          <p className="text-xs text-neutralDark">Generated: {new Date().toLocaleDateString()}</p>
+          <p className="text-xs text-neutralDark uppercase tracking-widest">{sw ? "Jamhuri ya Muungano wa Tanzania" : "United Republic of Tanzania"}</p>
+          <p className="font-semibold text-primary">{sw ? "Ripoti ya Utii na Ukaguzi wa Mfumo Mzima" : "System-Wide Compliance & Audit Report"}</p>
+          <p className="text-xs text-neutralDark">{sw ? "Imetengenezwa" : "Generated"}: {new Date().toLocaleDateString()}</p>
         </div>
 
-        <p className="text-sm font-semibold text-neutralDark mb-2">User Distribution by Role</p>
+        <p className="text-sm font-semibold text-neutralDark mb-2">{sw ? "Mgawanyo wa Watumiaji kwa Jukumu" : "User Distribution by Role"}</p>
         <table className="w-full text-sm mb-6">
           <tbody>
             {Object.entries(byRole).map(([role, count]) => (
@@ -56,7 +59,7 @@ export default function AdminReportsPage() {
           </tbody>
         </table>
 
-        <p className="text-sm font-semibold text-neutralDark mb-2">Succession Record Status Distribution</p>
+        <p className="text-sm font-semibold text-neutralDark mb-2">{sw ? "Mgawanyo wa Hadhi za Kumbukumbu za Urithi" : "Succession Record Status Distribution"}</p>
         <table className="w-full text-sm mb-6">
           <tbody>
             {Object.entries(byStatus).map(([status, count]) => (
@@ -68,15 +71,15 @@ export default function AdminReportsPage() {
           </tbody>
         </table>
 
-        <p className="text-sm font-semibold text-neutralDark mb-2">All Succession Records</p>
+        <p className="text-sm font-semibold text-neutralDark mb-2">{sw ? "Kumbukumbu Zote za Urithi" : "All Succession Records"}</p>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left border-b border-gray-300">
-              <th className="py-2 pr-4">Title</th>
-              <th className="py-2 pr-4">Owner</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Created</th>
-              <th className="py-2">Finalized</th>
+              <th className="py-2 pr-4">{sw ? "Kichwa" : "Title"}</th>
+              <th className="py-2 pr-4">{sw ? "Mmiliki" : "Owner"}</th>
+              <th className="py-2 pr-4">{sw ? "Hadhi" : "Status"}</th>
+              <th className="py-2 pr-4">{sw ? "Imeundwa" : "Created"}</th>
+              <th className="py-2">{sw ? "Imekamilishwa" : "Finalized"}</th>
             </tr>
           </thead>
           <tbody>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { StatusBadge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 type Flag = {
   id: string;
@@ -17,6 +18,8 @@ type Flag = {
 
 export default function LegalFlagsPage() {
   const supabase = createClient();
+  const { lang } = useLanguage();
+  const sw = lang === "sw";
   const [flags, setFlags] = useState<Flag[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,13 +50,15 @@ export default function LegalFlagsPage() {
 
   return (
     <DashboardShell role="legal">
-      <h1 className="text-xl font-semibold text-primary mb-6">Compliance Flags</h1>
+      <h1 className="text-xl font-semibold text-primary mb-6">{sw ? "Alama za Utii" : "Compliance Flags"}</h1>
 
       {loading ? (
-        <p className="text-sm text-neutralDark">Loading…</p>
+        <p className="text-sm text-neutralDark">{sw ? "Inapakia…" : "Loading…"}</p>
       ) : flags.length === 0 ? (
         <div className="card text-center py-10 text-neutralDark">
-          No compliance issues flagged yet. Flag one from a record&apos;s review page.
+          {sw
+            ? "Bado hakuna suala la utii lililowekwa alama. Weka alama kutoka kwenye ukurasa wa uhakiki wa kumbukumbu."
+            : "No compliance issues flagged yet. Flag one from a record's review page."}
         </div>
       ) : (
         <div className="space-y-3">
@@ -65,11 +70,11 @@ export default function LegalFlagsPage() {
               </div>
               <p className="text-sm text-neutralDark mb-1">{f.issue}</p>
               {f.recommendation && (
-                <p className="text-xs text-neutralDark italic mb-2">Recommendation: {f.recommendation}</p>
+                <p className="text-xs text-neutralDark italic mb-2">{sw ? "Pendekezo" : "Recommendation"}: {f.recommendation}</p>
               )}
               {f.status === "open" && (
                 <button onClick={() => resolve(f.id)} className="text-xs text-primary underline">
-                  Mark Resolved
+                  {sw ? "Weka Alama Imetatuliwa" : "Mark Resolved"}
                 </button>
               )}
             </div>

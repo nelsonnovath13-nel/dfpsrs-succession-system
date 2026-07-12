@@ -23,13 +23,15 @@ import {
   Menu,
   X,
   Compass,
-  LogOut,
+  Vault,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useLanguage, LanguageToggle } from "@/lib/i18n";
+import { useLanguage } from "@/lib/i18n";
 import { FooterLinks } from "@/components/FooterLinks";
 import { HelpButton } from "@/components/HelpButton";
+import { UserMenu } from "@/components/UserMenu";
+import { FirstLoginTour } from "@/components/FirstLoginTour";
 import { useInactivityLogout } from "@/lib/useInactivityLogout";
 
 type Role = "owner" | "witness" | "leader" | "admin" | "beneficiary" | "legal" | "auditor" | "executor";
@@ -55,6 +57,7 @@ const ICON: Record<string, LucideIcon> = {
   audit_logs: History,
   my_inheritance: Gift,
   onboarding: Compass,
+  vault: Vault,
 };
 
 function buildNav(role: Role, tr: (k: string) => string): NavItem[] {
@@ -69,6 +72,7 @@ function buildNav(role: Role, tr: (k: string) => string): NavItem[] {
       { href: "/owner/beneficiaries", key: "beneficiaries", label: tr("beneficiaries") },
       { href: "/owner/executors", key: "executors", label: tr("executors") },
       { href: "/owner/succession-plans", key: "succession_plans", label: tr("succession_plans") },
+      { href: "/owner/vault", key: "vault", label: tr("vault") },
       { href: "/owner/disputes", key: "disputes", label: tr("disputes") },
       { href: "/owner/reports", key: "reports", label: tr("reports") },
     ],
@@ -174,18 +178,17 @@ export default function DashboardShell({
         .eq("user_id", user.id)
         .eq("is_read", false);
       setUnread(count ?? 0);
+
+      // No pg_cron is configured, so the mandatory death-verification waiting period is
+      // enforced lazily: this is a safe no-op unless this user's own death report is
+      // "confirmed" and its waiting period has elapsed with no open dispute.
+      supabase.rpc("dfp_try_release_death", { p_owner_id: user.id }).then(() => {});
     })();
   }, [supabase]);
 
   useEffect(() => {
     setDrawerOpen(false);
   }, [pathname]);
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   useInactivityLogout(async () => {
     await supabase.auth.signOut();
@@ -220,9 +223,7 @@ export default function DashboardShell({
             >
               <Menu size={26} aria-hidden="true" />
             </button>
-            <div className="h-10 w-10 border-2 border-primary flex items-center justify-center text-primary font-bold text-sm shrink-0">
-              URT
-            </div>
+            <img src="/nembo.png" alt="URT" className="h-10 w-10 object-contain shrink-0" />
             <div>
               <p className="text-sm font-semibold text-primary leading-tight">
                 {tr("system_name_short")}
@@ -233,23 +234,15 @@ export default function DashboardShell({
             </div>
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
-            <LanguageToggle />
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-neutralDark">{fullName || "…"}</p>
-            </div>
             {unread > 0 && (
               <span className="border border-primary text-primary text-xs px-2 py-0.5" aria-label={`${unread} ${tr("unread_notifications")}`}>
                 {unread}
               </span>
             )}
-            <button
-              onClick={handleSignOut}
-              className="inline-flex items-center gap-2 text-white font-medium text-sm"
-              style={{ minHeight: 44, backgroundColor: "#B91C1C", padding: "0 16px" }}
-            >
-              <LogOut size={16} aria-hidden="true" />
-              {tr("sign_out")}
-            </button>
+            <UserMenu
+              fullName={fullName}
+              roleLabel={lang === "en" ? ROLE_LABEL[role].en : ROLE_LABEL[role].sw}
+            />
           </div>
         </div>
       </header>
@@ -267,6 +260,14 @@ export default function DashboardShell({
             ))}
             <div className="mt-6 border-t border-gray-200 pt-3 px-5">
               <FooterLinks compact />
+              <Link
+                href="/vault-access"
+                className="mt-2 inline-flex items-center gap-2 border border-gray-400 text-neutralDark px-4 hover:bg-neutralLight hover:border-primary hover:text-primary transition"
+                style={{ minHeight: 44 }}
+              >
+                <Vault size={16} aria-hidden="true" />
+                <span className="text-sm font-medium">{tr("vault_access")}</span>
+              </Link>
             </div>
           </nav>
         </aside>
@@ -321,6 +322,7 @@ export default function DashboardShell({
       </div>
 
       <HelpButton />
+      <FirstLoginTour storageKey={`dfp_tour_seen_${role}`} role={role} />
 
       {bottomNavItems.length > 0 && (
         <nav
