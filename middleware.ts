@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
   // role/is_suspended are no longer selectable via a plain table read (column-level REVOKE
   // closes a real cross-user PII exposure) -- this RPC returns only the caller's own row.
   const { data: statusData } = await supabase.rpc("dfp_get_my_role_status");
-  const profile = statusData as { role?: string; is_suspended?: boolean } | null;
+  const profile = statusData as { role?: string; is_suspended?: boolean; role_confirmed?: boolean } | null;
 
   if (profile?.is_suspended) {
     await supabase.auth.signOut();
@@ -71,6 +71,16 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("no_profile", "1");
+    return NextResponse.redirect(url);
+  }
+
+  // Google OAuth / phone-OTP sign-ins have no form step to pick a role the way email+password
+  // registration does, so dfp_handle_new_user defaults them to 'owner' with role_confirmed =
+  // false. Force them through a short role-confirmation step before anywhere else, rather than
+  // silently treating them as an owner.
+  if (!profile.role_confirmed && path !== "/auth/complete-profile") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/complete-profile";
     return NextResponse.redirect(url);
   }
 

@@ -38,7 +38,10 @@ export default function AdminUsersPage() {
   }, []);
 
   async function toggleSuspend(id: string, current: boolean) {
-    await supabase.from("dfp_profiles").update({ is_suspended: !current }).eq("id", id);
+    // Raw table UPDATE is no longer possible for is_suspended -- closed a privilege-escalation
+    // hole where any user could set this on their own row. Admin now goes through an explicit,
+    // audit-logged RPC instead.
+    await supabase.rpc("dfp_admin_update_profile", { p_user_id: id, p_role: null, p_is_suspended: !current });
     load();
   }
 

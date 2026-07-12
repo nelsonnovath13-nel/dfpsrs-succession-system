@@ -3,11 +3,22 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Fingerprint } from "lucide-react";
+import { Fingerprint, Mail, Phone } from "lucide-react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { createClient } from "@/lib/supabase/client";
 import { getNextOnboardingHref } from "@/lib/onboarding";
 import { useLanguage, LanguageToggle } from "@/lib/i18n";
+
+function GoogleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.87-3.04.87-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" />
+      <path fill="#FBBC05" d="M3.97 10.73A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.19.29-1.73V4.94H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.06l3.01-2.33z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.94l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
+    </svg>
+  );
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -16,6 +27,7 @@ function LoginForm() {
   const timedOut = searchParams.get("timeout");
   const noProfile = searchParams.get("no_profile");
   const justRegistered = searchParams.get("registered");
+  const oauthFailed = searchParams.get("error") === "oauth_failed";
   const supabase = createClient();
   const { lang } = useLanguage();
   const sw = lang === "sw";
@@ -29,6 +41,14 @@ function LoginForm() {
   const [needsPasskey, setNeedsPasskey] = useState(false);
   const [verifyingPasskey, setVerifyingPasskey] = useState(false);
   const [pendingDest, setPendingDest] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<"email" | "phone">("email");
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   async function finishLogin(dest: string) {
     router.refresh();
@@ -59,18 +79,37 @@ function LoginForm() {
     setLoading(true);
     setError(null);
     setUnconfirmed(false);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
+
+    // Routed through a server endpoint (not a direct client-side signInWithPassword) so failed
+    // attempts can be tracked server-side and an account locked out after repeated failures --
+    // a client-reported failure count cannot be trusted.
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const result = await res.json();
+
+    if (!res.ok) {
       setLoading(false);
-      if (/email not confirmed/i.test(error.message)) {
+      if (result.error === "email_not_confirmed") {
         setUnconfirmed(true);
+      } else if (result.error === "locked_out") {
+        const minutes = Math.ceil((result.retryAfterSeconds ?? 900) / 60);
+        setError(
+          sw
+            ? `Majaribio mengi ya kuingia yaliyoshindwa. Tafadhali subiri kama dakika ${minutes} kisha jaribu tena.`
+            : `Too many failed login attempts. Please wait about ${minutes} minute(s) and try again.`
+        );
+      } else if (result.error === "rate_limited") {
+        setError(sw ? "Maombi mengi kwa sasa. Tafadhali subiri kidogo kisha jaribu tena." : "Too many requests right now. Please wait a moment and try again.");
       } else {
-        setError(error.message);
+        setError(sw ? "Barua pepe au neno la siri si sahihi." : "Incorrect email or password.");
       }
       return;
     }
 
-    const userId = data.user?.id;
+    const userId = result.userId as string | undefined;
     const dest = userId ? await resolveDestination(userId) : "/";
 
     // If this account has a registered device passkey, require it as a second step before
@@ -136,6 +175,57 @@ function LoginForm() {
     }
   }
 
+  async function handleGoogleLogin() {
+    setGoogleLoading(true);
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/api/auth/callback` },
+    });
+    // Browser navigates away to Google -- no further client code runs on success.
+  }
+
+  async function handleSendOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setPhoneError(null);
+    setPhoneLoading(true);
+    const { error: otpError } = await supabase.auth.signInWithOtp({ phone });
+    setPhoneLoading(false);
+    if (otpError) {
+      setPhoneError(
+        /sms|phone provider|unsupported/i.test(otpError.message)
+          ? sw
+            ? "Uthibitishaji wa simu haujawezeshwa kwenye mfumo huu bado. Tumia barua pepe au Google kwa sasa."
+            : "Phone verification isn't enabled on this system yet. Please use Email or Google for now."
+          : otpError.message
+      );
+      return;
+    }
+    setOtpSent(true);
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setPhoneError(null);
+    setPhoneLoading(true);
+    const { data, error: verifyError } = await supabase.auth.verifyOtp({ phone, token: otp, type: "sms" });
+    setPhoneLoading(false);
+    if (verifyError) {
+      setPhoneError(sw ? "Namba ya uthibitisho si sahihi au imeisha muda." : "Incorrect or expired verification code.");
+      return;
+    }
+    const userId = data.user?.id;
+    const dest = userId ? await resolveDestination(userId) : "/";
+    if (userId) {
+      const { count } = await supabase.from("dfp_webauthn_credentials").select("id", { count: "exact", head: true }).eq("user_id", userId);
+      if ((count ?? 0) > 0) {
+        setPendingDest(dest);
+        setNeedsPasskey(true);
+        return;
+      }
+    }
+    await finishLogin(dest);
+  }
+
   return (
     <main className="min-h-screen flex items-center justify-center px-6 bg-surface">
       <div className="w-full max-w-md">
@@ -174,31 +264,114 @@ function LoginForm() {
             </button>
           </div>
         ) : (
+        <>
+          <div className="card space-y-4 mb-3">
+            {suspended && (
+              <div className="bg-amber-50 text-amber-800 text-sm px-3 py-2 border border-amber-700">
+                {sw ? "Akaunti yako imesimamishwa. Wasiliana na msimamizi wa mfumo." : "Your account has been suspended. Contact a system administrator."}
+              </div>
+            )}
+            {timedOut && (
+              <div className="bg-amber-50 text-amber-800 text-sm px-3 py-2 border border-amber-700">
+                {sw
+                  ? "Ulitolewa nje baada ya dakika 15 za kutofanya kitu, kulinda usalama wa kumbukumbu za familia yako. Tafadhali ingia tena."
+                  : "You were signed out after 15 minutes of inactivity, to keep your family's records secure. Please sign in again."}
+              </div>
+            )}
+            {noProfile && (
+              <div className="bg-amber-50 text-amber-800 text-sm px-3 py-2 border border-amber-700">
+                {sw
+                  ? "Hatujaweza kupata wasifu wa akaunti yako. Tafadhali ingia tena, au wasiliana na msaada kama hili litaendelea kutokea."
+                  : "We could not find your account profile. Please sign in again, or contact support if this keeps happening."}
+              </div>
+            )}
+            {justRegistered && (
+              <div className="bg-green-50 text-secondary text-sm px-3 py-2 border border-secondary">
+                {sw ? "Akaunti yako imeundwa. Tafadhali ingia hapa chini." : "Your account has been created. Please sign in below."}
+              </div>
+            )}
+            {oauthFailed && (
+              <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">
+                {sw
+                  ? "Kuingia kwa Google hakukufanikiwa. Jaribu tena, au tumia Barua Pepe."
+                  : "Google sign-in didn't complete. Please try again, or use Email instead."}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={googleLoading}
+              className="btn-outline w-full inline-flex items-center justify-center gap-2"
+            >
+              <GoogleIcon />
+              {googleLoading ? (sw ? "Inaelekeza…" : "Redirecting…") : sw ? "Endelea na Google" : "Continue with Google"}
+            </button>
+            <div className="flex items-center gap-3 text-xs text-inkSoft">
+              <span className="flex-1 border-t border-gray-200" />
+              {sw ? "au" : "or"}
+              <span className="flex-1 border-t border-gray-200" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => { setMode("email"); setPhoneError(null); }}
+                className={`inline-flex items-center justify-center gap-2 text-sm py-2.5 border ${mode === "email" ? "border-primary bg-primary/5 text-primary font-medium" : "border-gray-300 text-inkSoft"}`}
+              >
+                <Mail size={15} aria-hidden="true" /> {sw ? "Barua Pepe" : "Email"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode("phone"); setError(null); }}
+                className={`inline-flex items-center justify-center gap-2 text-sm py-2.5 border ${mode === "phone" ? "border-primary bg-primary/5 text-primary font-medium" : "border-gray-300 text-inkSoft"}`}
+              >
+                <Phone size={15} aria-hidden="true" /> {sw ? "Namba ya Simu" : "Phone Number"}
+              </button>
+            </div>
+          </div>
+
+        {mode === "phone" ? (
+          <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="card space-y-4">
+            <p className="text-xs text-inkSoft">
+              {sw
+                ? "Kidokezo: uthibitishaji wa simu unahitaji huduma ya SMS iliyowezeshwa upande wa mfumo. Kama hujaona ujumbe, tumia Barua Pepe au Google kwa sasa."
+                : "Note: phone verification requires an SMS provider to be enabled on the backend. If you don't receive a code, please use Email or Google for now."}
+            </p>
+            {phoneError && <div role="alert" className="bg-white text-red-800 border border-red-800 text-sm px-3 py-2">{phoneError}</div>}
+            {!otpSent ? (
+              <div>
+                <label className="label">{sw ? "Namba ya Simu" : "Phone Number"}</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="+255…"
+                  className="input-field"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="label">{sw ? "Namba ya Uthibitisho (OTP)" : "Verification Code (OTP)"}</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  className="input-field text-center text-lg tracking-widest"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  maxLength={6}
+                />
+                <button type="button" onClick={() => setOtpSent(false)} className="text-xs text-primary underline mt-1">
+                  {sw ? "Badilisha namba ya simu" : "Change phone number"}
+                </button>
+              </div>
+            )}
+            <button type="submit" disabled={phoneLoading} className="btn-primary w-full">
+              {phoneLoading ? (sw ? "Inatuma…" : "Sending…") : otpSent ? (sw ? "Thibitisha" : "Verify") : sw ? "Tuma Namba ya Uthibitisho" : "Send Verification Code"}
+            </button>
+          </form>
+        ) : (
         <form onSubmit={handleSubmit} className="card space-y-4">
-          {suspended && (
-            <div className="bg-amber-50 text-amber-800 text-sm px-3 py-2 border border-amber-700">
-              {sw ? "Akaunti yako imesimamishwa. Wasiliana na msimamizi wa mfumo." : "Your account has been suspended. Contact a system administrator."}
-            </div>
-          )}
-          {timedOut && (
-            <div className="bg-amber-50 text-amber-800 text-sm px-3 py-2 border border-amber-700">
-              {sw
-                ? "Ulitolewa nje baada ya dakika 15 za kutofanya kitu, kulinda usalama wa kumbukumbu za familia yako. Tafadhali ingia tena."
-                : "You were signed out after 15 minutes of inactivity, to keep your family's records secure. Please sign in again."}
-            </div>
-          )}
-          {noProfile && (
-            <div className="bg-amber-50 text-amber-800 text-sm px-3 py-2 border border-amber-700">
-              {sw
-                ? "Hatujaweza kupata wasifu wa akaunti yako. Tafadhali ingia tena, au wasiliana na msaada kama hili litaendelea kutokea."
-                : "We could not find your account profile. Please sign in again, or contact support if this keeps happening."}
-            </div>
-          )}
-          {justRegistered && (
-            <div className="bg-green-50 text-secondary text-sm px-3 py-2 border border-secondary">
-              {sw ? "Akaunti yako imeundwa. Tafadhali ingia hapa chini." : "Your account has been created. Please sign in below."}
-            </div>
-          )}
           {unconfirmed && (
             <div role="alert" className="bg-amber-50 text-amber-800 border border-amber-700 text-sm px-3 py-2 space-y-2">
               <p>
@@ -241,6 +414,8 @@ function LoginForm() {
             {loading ? (sw ? "Inaingia…" : "Signing in…") : sw ? "Ingia" : "Sign In"}
           </button>
         </form>
+        )}
+        </>
         )}
         <p className="text-center text-sm text-neutralDark mt-4">
           {sw ? "Huna akaunti?" : "Don't have an account?"}{" "}

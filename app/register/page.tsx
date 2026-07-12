@@ -12,10 +12,13 @@ const ROLES = [
   { value: "executor", en: "Estate Executor", sw: "Msimamizi wa Mirathi", desc_en: "Track an estate's succession progress once a property owner appoints and links you.", desc_sw: "Fuatilia maendeleo ya urithi mara mmiliki wa mali atakapokuteua na kukuunganisha." },
   { value: "witness", en: "Family Witness", sw: "Shahidi wa Familia", desc_en: "Review and confirm succession records you're asked to witness.", desc_sw: "Pitia na thibitisha kumbukumbu za urithi ulizoombwa kushuhudia." },
   { value: "leader", en: "Local Government Leader", sw: "Kiongozi wa Serikali za Mitaa", desc_en: "Give leader-level verification on succession records in your area.", desc_sw: "Toa uthibitisho wa kiongozi kwenye kumbukumbu za urithi katika eneo lako." },
-  { value: "legal", en: "Legal Officer", sw: "Afisa Sheria", desc_en: "Conduct legal review of succession records referred for legal verification.", desc_sw: "Fanya mapitio ya kisheria ya kumbukumbu za urithi zilizopelekwa kwa uthibitisho wa kisheria." },
-  { value: "admin", en: "System Administrator", sw: "Msimamizi wa Mfumo", desc_en: "Oversee users and system-wide administration.", desc_sw: "Simamia watumiaji na uendeshaji wa mfumo mzima." },
+  { value: "legal", en: "Legal Officer / Advocate / Lawyer", sw: "Afisa Sheria / Wakili / Mwanasheria", desc_en: "Conduct legal review of succession records referred for legal verification.", desc_sw: "Fanya mapitio ya kisheria ya kumbukumbu za urithi zilizopelekwa kwa uthibitisho wa kisheria." },
   { value: "auditor", en: "System Auditor", sw: "Mkaguzi wa Mfumo", desc_en: "Read-only access to audit logs and compliance records.", desc_sw: "Ufikiaji wa kusoma tu wa kumbukumbu za ukaguzi na uzingatiaji." },
 ];
+// "System Administrator" is deliberately not an option here -- admin accounts are created by an
+// existing admin, never by self-registration. This is enforced server-side in
+// dfp_handle_new_user() too, not just hidden in the UI, since the signUp API can be called
+// directly regardless of what this form offers.
 
 export default function RegisterPage() {
   const supabase = createClient();
@@ -136,6 +139,27 @@ export default function RegisterPage() {
           <img src="/nembo.png" alt="URT" className="mx-auto mb-3 h-12 w-12 object-contain" />
           <h1 className="text-xl font-semibold text-neutralDark">{sw ? "Fungua Akaunti Yako" : "Create your account"}</h1>
         </div>
+
+        <div className="card mb-3">
+          <button
+            type="button"
+            onClick={async () => {
+              await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/api/auth/callback` } });
+            }}
+            className="btn-outline w-full inline-flex items-center justify-center gap-2"
+          >
+            {sw ? "Fungua Akaunti kwa Google" : "Sign up with Google"}
+          </button>
+          <p className="text-xs text-inkSoft text-center mt-2">
+            {sw ? "Utaulizwa uchague jukumu lako baada ya kuingia." : "You'll be asked to choose your role right after signing in."}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-inkSoft mb-3">
+          <span className="flex-1 border-t border-gray-200" />
+          {sw ? "au jaza fomu" : "or fill in the form"}
+          <span className="flex-1 border-t border-gray-200" />
+        </div>
+
         <form onSubmit={handleSubmit} className="card space-y-4">
           {error && (
             <div role="alert" className="bg-white text-red-800 text-sm px-3 py-2 border border-red-800">
