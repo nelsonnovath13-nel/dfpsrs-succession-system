@@ -25,10 +25,9 @@ export default function AdminUsersPage() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("dfp_profiles")
-      .select("id, full_name, phone_number, role, is_suspended, created_at")
-      .order("created_at", { ascending: false });
+    // is_suspended is no longer selectable via a plain table read (closed a cross-user PII
+    // exposure) -- this RPC is admin-gated server-side and returns the full list explicitly.
+    const { data } = await supabase.rpc("dfp_admin_list_profiles");
     setUsers(data ?? []);
     setLoading(false);
   }

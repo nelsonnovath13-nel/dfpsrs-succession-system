@@ -154,8 +154,11 @@ export default function VerificationReview({ role }: { role: "witness" | "leader
       }
 
       setUsingReportSnapshot(false);
-      const [ownerRes, allocRes, propsRes, familyRes] = await Promise.all([
-        supabase.from("dfp_profiles").select("id, full_name, phone_number, national_id").eq("id", planData.owner_id).maybeSingle(),
+      // national_id is no longer selectable via a plain table read (closed a cross-user PII
+      // exposure) -- this RPC only returns the owner's identity to someone actually assigned
+      // to verify their record (or the owner themselves, or admin/auditor).
+      const [ownerRpcRes, allocRes, propsRes, familyRes] = await Promise.all([
+        supabase.rpc("dfp_get_owner_identity_for_verification", { p_owner_id: planData.owner_id }),
         supabase
           .from("dfp_property_allocations")
           .select(
@@ -168,7 +171,7 @@ export default function VerificationReview({ role }: { role: "witness" | "leader
           .eq("owner_id", planData.owner_id),
         supabase.from("dfp_family_members").select("id, full_name, relationship_type").eq("owner_id", planData.owner_id),
       ]);
-      setOwner(ownerRes.data);
+      setOwner(ownerRpcRes.data);
       setAllocations((allocRes.data as any) ?? []);
       setProperties(propsRes.data ?? []);
       setFamilyMembers(familyRes.data ?? []);

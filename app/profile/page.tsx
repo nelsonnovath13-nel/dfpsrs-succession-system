@@ -48,11 +48,9 @@ export default function ProfilePage() {
         return;
       }
       setEmail(user.email ?? "");
-      const { data: profile } = await withTimeout(
-        supabase.from("dfp_profiles").select("full_name, phone_number, national_id, role, avatar_path").eq("id", user.id).maybeSingle(),
-        15000,
-        { data: null } as any
-      );
+      // national_id is no longer selectable via a plain table read (closed a cross-user PII
+      // exposure) -- this RPC returns only the caller's own profile, including that field.
+      const { data: profile } = await withTimeout(supabase.rpc("dfp_get_my_profile"), 15000, { data: null } as any);
       if (profile) {
         setFullName(profile.full_name ?? "");
         setPhoneNumber(profile.phone_number ?? "");

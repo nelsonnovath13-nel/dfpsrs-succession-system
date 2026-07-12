@@ -50,8 +50,11 @@ export default function CertificatePage() {
         return;
       }
 
-      const [ownerRes, allocRes, verRes, pubRes] = await Promise.all([
-        supabase.from("dfp_profiles").select("full_name, national_id, phone_number, avatar_path").eq("id", planData.owner_id).maybeSingle(),
+      // national_id is no longer selectable via a plain table read (closed a cross-user PII
+      // exposure) -- this RPC only returns the owner's identity to the owner themselves or
+      // someone actually assigned to verify their record.
+      const [ownerRpcRes, allocRes, verRes, pubRes] = await Promise.all([
+        supabase.rpc("dfp_get_owner_identity_for_verification", { p_owner_id: planData.owner_id }),
         supabase
           .from("dfp_property_allocations")
           .select("id, share_percentage, dfp_properties(name, category, estimated_value, property_number), dfp_beneficiaries(full_name, relationship)")
@@ -62,13 +65,13 @@ export default function CertificatePage() {
           .eq("succession_record_id", params.id),
         supabase.from("dfp_public_verifications").select("public_token, certificate_number").eq("succession_record_id", params.id).maybeSingle(),
       ]);
-      setOwner(ownerRes.data);
+      setOwner(ownerRpcRes.data);
       setAllocations((allocRes.data as any) ?? []);
       setVerifications((verRes.data as any) ?? []);
       setCertNumber(pubRes.data?.certificate_number ?? null);
 
-      if (ownerRes.data?.avatar_path) {
-        const { data: signed } = await supabase.storage.from("dfp-documents").createSignedUrl(ownerRes.data.avatar_path, 3600);
+      if (ownerRpcRes.data?.avatar_path) {
+        const { data: signed } = await supabase.storage.from("dfp-documents").createSignedUrl(ownerRpcRes.data.avatar_path, 3600);
         if (signed) setPhotoUrl(signed.signedUrl);
       }
 

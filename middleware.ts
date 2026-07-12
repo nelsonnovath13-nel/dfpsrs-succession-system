@@ -51,11 +51,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const { data: profile } = await supabase
-    .from("dfp_profiles")
-    .select("role, is_suspended")
-    .eq("id", user.id)
-    .maybeSingle();
+  // role/is_suspended are no longer selectable via a plain table read (column-level REVOKE
+  // closes a real cross-user PII exposure) -- this RPC returns only the caller's own row.
+  const { data: statusData } = await supabase.rpc("dfp_get_my_role_status");
+  const profile = statusData as { role?: string; is_suspended?: boolean } | null;
 
   if (profile?.is_suspended) {
     await supabase.auth.signOut();

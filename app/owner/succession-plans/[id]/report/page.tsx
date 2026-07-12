@@ -81,8 +81,11 @@ export default function SuccessionFullReportPage() {
         return;
       }
 
-      const [ownerRes, propsRes, allocRes, familyRes, execRes, verRes, disputeRes, legalRes, pubRes] = await Promise.all([
-        supabase.from("dfp_profiles").select("full_name, national_id, phone_number, avatar_path").eq("id", planData.owner_id).maybeSingle(),
+      // national_id is no longer selectable via a plain table read (closed a cross-user PII
+      // exposure) -- this RPC only returns the owner's identity to the owner themselves or
+      // someone actually assigned to verify their record.
+      const [ownerRpcRes, propsRes, allocRes, familyRes, execRes, verRes, disputeRes, legalRes, pubRes] = await Promise.all([
+        supabase.rpc("dfp_get_owner_identity_for_verification", { p_owner_id: planData.owner_id }),
         supabase
           .from("dfp_properties")
           .select("id, name, category, property_number, location, ownership_type, estimated_value, status, created_at")
@@ -102,7 +105,7 @@ export default function SuccessionFullReportPage() {
         supabase.from("dfp_public_verifications").select("public_token, certificate_number").eq("succession_record_id", params.id).maybeSingle(),
       ]);
 
-      setOwner(ownerRes.data);
+      setOwner(ownerRpcRes.data);
       const props = propsRes.data ?? [];
       setProperties(props);
       setAllocations((allocRes.data as any) ?? []);
